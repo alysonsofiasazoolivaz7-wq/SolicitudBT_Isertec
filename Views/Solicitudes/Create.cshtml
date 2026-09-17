@@ -1,0 +1,266 @@
+@model SolicitudFormVm
+
+<div class="page-head">
+    <div>
+        <p class="eyebrow">NUEVA ATENCIÓN</p>
+        <h1>Crear solicitud</h1>
+        <p class="muted">
+            Describe el problema y, si lo necesitas, solicita un técnico.
+        </p>
+    </div>
+</div>
+
+<form asp-action="Create"
+      method="post"
+      enctype="multipart/form-data"
+      class="form-card">
+
+    @Html.AntiForgeryToken()
+
+    <div class="grid2">
+
+        <div>
+            <label asp-for="CategoriaId">Categoría</label>
+
+            <select asp-for="CategoriaId">
+                <option value="">Selecciona una categoría</option>
+
+                @foreach (var x in Model.Categorias)
+                {
+                    <option value="@x.Id">
+                        @x.Nombre
+                    </option>
+                }
+            </select>
+
+            <span asp-validation-for="CategoriaId"
+                  class="error"></span>
+        </div>
+
+
+        <div>
+            <label asp-for="EquipoId">Equipo</label>
+
+            <select asp-for="EquipoId">
+                <option value="">No especificar</option>
+
+                @foreach (var x in Model.Equipos)
+                {
+                    <option value="@x.Id">
+                        @x.Codigo · @x.Tipo
+                    </option>
+                }
+            </select>
+
+            <span asp-validation-for="EquipoId"
+                  class="error"></span>
+        </div>
+
+    </div>
+
+
+    <label asp-for="Titulo">
+        Asunto
+    </label>
+
+    <input asp-for="Titulo" />
+
+    <span asp-validation-for="Titulo"
+          class="error"></span>
+
+
+    <label asp-for="Descripcion">
+        Descripción
+    </label>
+
+    <textarea asp-for="Descripcion"
+              rows="6"></textarea>
+
+    <span asp-validation-for="Descripcion"
+          class="error"></span>
+
+
+    <div class="grid2">
+
+        <div>
+            <label asp-for="Prioridad">
+                Prioridad
+            </label>
+
+            <select asp-for="Prioridad">
+                <option value="baja">Baja</option>
+                <option value="media">Media</option>
+                <option value="alta">Alta</option>
+                <option value="critica">Crítica</option>
+            </select>
+        </div>
+
+
+        <div>
+            <label asp-for="PuedeContinuar">
+                ¿Puedes continuar trabajando?
+            </label>
+
+            <select asp-for="PuedeContinuar">
+                <option value="true">Sí</option>
+                <option value="false">No</option>
+            </select>
+        </div>
+
+    </div>
+
+
+    <!-- MODALIDAD -->
+
+    <div class="mode">
+
+        <label>
+            <input type="radio"
+                   asp-for="Modalidad"
+                   value="presencial"
+                   id="modalidadPresencial">
+
+            🏢 Ir a la oficina
+        </label>
+
+
+        <label>
+            <input type="radio"
+                   asp-for="Modalidad"
+                   value="remoto"
+                   id="modalidadRemoto">
+
+            💻 Desde mi computadora
+        </label>
+
+    </div>
+
+
+    <!-- HORARIO DE OFICINA -->
+
+    <div id="datosOficina"
+         class="grid2">
+
+        <div>
+            <label asp-for="FechaVisitaSolicitada">
+                Fecha aproximada de llegada
+            </label>
+
+            <input asp-for="FechaVisitaSolicitada"
+                   type="date" />
+        </div>
+
+
+        <div>
+            <label asp-for="HoraVisitaSolicitada">
+                Hora aproximada de llegada
+            </label>
+
+            <input asp-for="HoraVisitaSolicitada"
+                   type="time" />
+        </div>
+
+    </div>
+
+
+    <!-- TÉCNICO SOLICITADO -->
+
+    <label asp-for="TecnicoSolicitadoId">
+        Solicitar técnico específico (opcional)
+    </label>
+
+    <select asp-for="TecnicoSolicitadoId">
+
+        <option value="">
+            Que BT decida
+        </option>
+
+        @foreach (var x in Model.Tecnicos)
+        {
+            <option value="@x.Id">
+                @x.Nombre @x.Apellido
+            </option>
+        }
+
+    </select>
+
+
+    <!-- ARCHIVOS -->
+
+    <label>
+        Archivos o capturas (opcional)
+    </label>
+
+    <input name="files"
+           type="file"
+           multiple
+           accept="image/*,.pdf,.txt,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.zip" />
+
+
+    <div asp-validation-summary="All"
+         class="error"></div>
+
+
+    <button type="submit"
+            class="btn primary">
+        Crear solicitud
+    </button>
+
+</form>
+
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const presencial =
+            document.getElementById("modalidadPresencial");
+
+        const remoto =
+            document.getElementById("modalidadRemoto");
+
+        const datosOficina =
+            document.getElementById("datosOficina");
+
+        const fecha =
+            document.getElementById("FechaVisitaSolicitada");
+
+        const hora =
+            document.getElementById("HoraVisitaSolicitada");
+
+
+        function actualizarModalidad() {
+
+            if (presencial.checked) {
+
+                datosOficina.style.display = "";
+
+                fecha.required = true;
+                hora.required = true;
+
+            } else {
+
+                datosOficina.style.display = "none";
+
+                fecha.required = false;
+                hora.required = false;
+
+                fecha.value = "";
+                hora.value = "";
+            }
+        }
+
+
+        presencial.addEventListener(
+            "change",
+            actualizarModalidad
+        );
+
+        remoto.addEventListener(
+            "change",
+            actualizarModalidad
+        );
+
+
+        actualizarModalidad();
+    });
+</script>

@@ -1,0 +1,2 @@
+@model List<Solicitud>
+<div class="page-head"><div><p class="eyebrow">PLANIFICACIÓN</p><h1>Calendario de atenciones</h1></div></div><div class="calendar-grid">@foreach(var s in Model){<a class="event" asp-controller="Solicitudes" asp-action="Details" asp-route-id="@s.Id"><b>@s.FechaProgramada?.ToString("dd/MM/yyyy")</b><strong>@s.HoraInicioProgramada?.ToString(@"hh\:mm") - @s.HoraFinProgramada?.ToString(@"hh\:mm")</strong><span>@s.Codigo · @s.Usuario?.Nombre</span></a>}</div>

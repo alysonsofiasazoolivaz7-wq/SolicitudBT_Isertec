@@ -1,0 +1,152 @@
+@using SolicitudIT_Isertec.Models
+@model List<Notificacion>
+
+<div class="page-head">
+    <div>
+        <p class="eyebrow">CENTRO DE AVISOS</p>
+        <h1>Notificaciones</h1>
+        <p class="muted">
+            Revisa las solicitudes y actualizaciones del sistema.
+        </p>
+    </div>
+
+    <form asp-action="ReadAll" method="post">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn">
+            Marcar todo como leído
+        </button>
+    </form>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="success">
+        @TempData["Success"]
+    </div>
+}
+
+@if (TempData["Info"] != null)
+{
+    <div class="info">
+        @TempData["Info"]
+    </div>
+}
+
+<div class="notif-list">
+
+    @if (!Model.Any())
+    {
+        <div class="panel">
+            <p class="muted">
+                No tienes notificaciones.
+            </p>
+        </div>
+    }
+    else
+    {
+        foreach (var n in Model)
+        {
+            // Los mensajes de chat no se muestran aquí.
+            if (n.Tipo == "chat")
+            {
+                continue;
+            }
+
+            var esNuevaSolicitud =
+                n.Tipo == "nueva" &&
+                n.SolicitudId.HasValue &&
+                User.IsInRole("tecnico");
+
+            <div class="notif @(n.LeidaEn.HasValue ? "read" : "unread")">
+
+                <div class="notif-content">
+
+                    <div class="notif-title-row">
+
+                        <b>@n.Titulo</b>
+
+                        @if (!n.LeidaEn.HasValue)
+                        {
+                            <span class="notif-badge">
+                                Nueva
+                            </span>
+                        }
+
+                    </div>
+
+                    <p>
+                        @n.Mensaje
+                    </p>
+
+                    <small>
+                        @n.CreadoEn.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                    </small>
+
+                    @if (esNuevaSolicitud)
+                    {
+                        <div class="notif-actions">
+
+                            <a class="btn"
+                               asp-action="ViewRequest"
+                               asp-route-id="@n.Id">
+                                Visualizar solicitud
+                            </a>
+
+                            <form asp-action="Accept"
+                                  method="post"
+                                  style="display:inline">
+
+                                @Html.AntiForgeryToken()
+
+                                <input type="hidden"
+                                       name="id"
+                                       value="@n.Id" />
+
+                                <button type="submit"
+                                        class="btn primary">
+                                    Aceptar solicitud
+                                </button>
+
+                            </form>
+
+                        </div>
+                    }
+                    else if (n.SolicitudId.HasValue)
+                    {
+                        <div class="notif-actions">
+
+                            <a class="btn"
+                               asp-action="ViewRequest"
+                               asp-route-id="@n.Id">
+                                Visualizar solicitud
+                            </a>
+
+                        </div>
+                    }
+
+                </div>
+
+                @if (!n.LeidaEn.HasValue)
+                {
+                    <form asp-action="Read"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="id"
+                               value="@n.Id" />
+
+                        <button type="submit"
+                                class="btn">
+                            Marcar leído
+                        </button>
+
+                    </form>
+                }
+
+            </div>
+        }
+    }
+
+</div>

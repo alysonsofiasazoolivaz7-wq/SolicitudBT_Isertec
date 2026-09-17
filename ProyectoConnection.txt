@@ -1,0 +1,36 @@
+no dejar que Julián lo toque, y si necesitas acceso al repo me avisas para habilitar una nueva rama, pero creo que aún hay que explicarte un par de cosas de la arquitectura y ponernos de acuerdo el formato del json que pasaremos entre front-back, si no después será más problema que solución 
+
+Okok, muchas gracias por todo. 
+
+1. Listo, siempre tener en cuenta ello, el usuario para conectarse y como tal usuario administrador de toda la DB es el "sa", y la contraseña que le pusimos, como ese es el usuario administrador tener cuidado con qué haces en la db
+
+2. en el appsettings tiene un formato específico, además que en .NET core a veces por defecto si usas las "plantillas" que te dan para una app, te pone las credenciales en otro archivo, siempre moverlas al appsettings, ahora te comparto como es que se le ponen los nombres:
+
+al ser un json:
+
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=.\\MSSQLSERVER01;Initial Catalog=NOMBRE_DE_LA_DB;User ID=sa;Password=Is3rPracticas2026;Persist Security Info=False;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=True;Connection Timeout=30;"
+  }
+}
+
+
+emmmm entonces
+
+usuario: sa
+Contraseña: Is3rPracticas2026
+
+
+LISTO, ESE SERÍA COMO EL JSON Y LA VARIABLE A UTILIZAR PARA CONECTARTE CON SQL DESDE EL CÓDIGO, SI puedes usa Entity framework (el orm), evita usar otros pls
+
+solo xd
+
+Gracie (❁´◡`❁)
+- Alyson

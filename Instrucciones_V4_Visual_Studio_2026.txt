@@ -1,0 +1,382 @@
+INSTRUCCIONES - SolicitudIT_Isertec V4
+ASP.NET CORE 10 + SQL SERVER
+PARA VISUAL STUDIO 2026
+
+============================================================
+1. QUE VAS A NECESITAR
+============================================================
+
+En Windows instala:
+
+- Visual Studio 2026
+- .NET 10 SDK
+- SQL Server Developer o SQL Server Express
+- SQL Server Management Studio (SSMS), recomendado
+
+En Visual Studio 2026 debes tener instalada la carga de trabajo:
+
+"ASP.NET y desarrollo web"
+
+Para comprobar .NET:
+1. Abre PowerShell.
+2. Ejecuta:
+
+dotnet --version
+
+Debe aparecer una versión 10.x.
+
+============================================================
+2. DESCARGAR Y DESCOMPRIMIR EL PROYECTO
+============================================================
+
+Descarga:
+
+SolicitudIT_Isertec_V4_Completa.zip
+
+Descomprímelo, por ejemplo, en:
+
+C:\Proyectos\SolicitudIT_Isertec_V4
+
+NO abras solamente Program.cs.
+
+El archivo principal que debes abrir es:
+
+SolicitudIT_Isertec.csproj
+
+============================================================
+3. ABRIR EL PROYECTO EN VISUAL STUDIO 2026
+============================================================
+
+1. Abre Visual Studio 2026.
+2. Selecciona:
+
+   Abrir un proyecto o una solución
+
+3. Busca:
+
+   C:\Proyectos\SolicitudIT_Isertec_V4
+
+4. Abre:
+
+   SolicitudIT_Isertec.csproj
+
+5. Espera a que Visual Studio termine de restaurar los paquetes NuGet.
+
+============================================================
+4. CONFIGURAR SQL SERVER
+============================================================
+
+Abre dentro del proyecto:
+
+appsettings.json
+
+Busca:
+
+ConnectionStrings
+
+Debes colocar la conexión de TU SQL Server.
+
+Ejemplo si utilizas SQL Server Express:
+
+Server=.\SQLEXPRESS;Database=soporte_bt_v4;Trusted_Connection=True;TrustServerCertificate=True;
+
+Ejemplo si utilizas SQL Server local:
+
+Server=localhost;Database=soporte_bt_v4;Trusted_Connection=True;TrustServerCertificate=True;
+
+IMPORTANTE:
+No copies literalmente estos datos si tu instancia de SQL Server tiene otro nombre.
+
+============================================================
+5. CREAR LA BASE DE DATOS
+============================================================
+
+Opción recomendada para una instalación nueva:
+
+1. Abre SQL Server Management Studio.
+2. Conéctate a tu servidor.
+3. Crea una base de datos llamada:
+
+   soporte_bt_v4
+
+4. En Visual Studio abre:
+
+   Herramientas
+   > Administrador de paquetes NuGet
+   > Consola del Administrador de paquetes
+
+5. Ejecuta:
+
+   Add-Migration InitialCreate
+
+6. Después ejecuta:
+
+   Update-Database
+
+Entity Framework creará las tablas.
+
+IMPORTANTE:
+Si vas a utilizar una base de datos que ya contiene información del sistema PHP,
+NO ejecutes Update-Database sobre ella todavía.
+Primero debemos revisar y migrar los datos de MySQL a SQL Server.
+
+============================================================
+6. RESTAURAR PAQUETES
+============================================================
+
+Normalmente Visual Studio 2026 lo hará automáticamente.
+
+Si necesitas hacerlo manualmente:
+
+- Clic derecho sobre la solución.
+- Selecciona:
+
+  Restaurar paquetes NuGet
+
+También puedes usar la terminal:
+
+dotnet restore
+
+============================================================
+7. COMPILAR EL PROYECTO
+============================================================
+
+En Visual Studio 2026:
+
+Compilar
+> Recompilar solución
+
+Si todo está correcto, no debe aparecer ningún error de compilación.
+
+Si aparece un error:
+
+NO cambies código al azar.
+
+Copia el mensaje completo del error y guárdalo para corregirlo.
+
+============================================================
+8. EJECUTAR EL SISTEMA
+============================================================
+
+En la parte superior de Visual Studio selecciona:
+
+HTTPS
+
+Después pulsa:
+
+▶ Iniciar
+
+Visual Studio abrirá el navegador.
+
+La dirección será parecida a:
+
+https://localhost:xxxx
+
+============================================================
+9. CREAR EL PRIMER ADMINISTRADOR
+============================================================
+
+Después de ejecutar el proyecto, utiliza la pantalla de configuración inicial
+incluida en la V4 para crear el primer usuario administrador.
+
+Usa un correo/usuario de prueba inicialmente.
+
+Después podremos crear los usuarios reales de la empresa.
+
+============================================================
+10. PRIMERA PRUEBA QUE DEBES HACER
+============================================================
+
+Prueba en este orden:
+
+1. Entrar como administrador.
+2. Crear un usuario normal.
+3. Crear/registrar un técnico BT.
+4. Registrar un equipo.
+5. Entrar como usuario normal.
+6. Crear una solicitud.
+7. Seleccionar categoría.
+8. Seleccionar equipo si corresponde.
+9. Elegir:
+      Presencial
+   o:
+      Remoto
+10. Enviar la solicitud.
+11. Entrar como BT.
+12. Verificar que aparezca la solicitud.
+13. Tomar o asignar la solicitud.
+14. Programar la atención.
+15. Cambiar el estado.
+16. Agregar comentarios.
+17. Probar notificaciones.
+18. Probar el chat.
+19. Probar adjuntar una imagen/archivo.
+20. Revisar el calendario.
+
+============================================================
+11. CARPETAS IMPORTANTES
+============================================================
+
+Controllers
+    Controladores de las páginas y acciones.
+
+Models
+    Entidades y modelos de datos.
+
+Data
+    Entity Framework y configuración de SQL Server.
+
+Services
+    Servicios de autenticación y notificaciones.
+
+Views
+    Interfaz Razor.
+
+wwwroot
+    CSS, imágenes, JavaScript y archivos públicos.
+
+Data\Sql
+    Scripts relacionados con SQL Server.
+
+============================================================
+12. SI VISUAL STUDIO DICE QUE FALTA .NET 10
+============================================================
+
+Abre:
+
+Visual Studio Installer
+
+Busca Visual Studio 2026.
+
+Selecciona:
+
+Modificar
+
+Verifica:
+
+ASP.NET y desarrollo web
+
+Y que esté instalado el SDK de .NET 10.
+
+Después reinicia Visual Studio.
+
+============================================================
+13. SI Add-Migration NO FUNCIONA
+============================================================
+
+En la Consola del Administrador de paquetes ejecuta:
+
+Install-Package Microsoft.EntityFrameworkCore.Tools
+
+Después:
+
+Add-Migration InitialCreate
+
+y:
+
+Update-Database
+
+============================================================
+14. SI SQL SERVER NO CONECTA
+============================================================
+
+Comprueba:
+
+- Que SQL Server esté iniciado.
+- Que el nombre del servidor sea correcto.
+- Que la base de datos exista.
+- Que appsettings.json tenga la conexión correcta.
+- Que Trusted_Connection corresponda al tipo de autenticación utilizado.
+
+No cambies el proyecto completo por un error de conexión.
+
+Primero revisa el mensaje exacto.
+
+============================================================
+15. MIGRACIÓN DEL SISTEMA PHP
+============================================================
+
+La V4 está pensada para reemplazar progresivamente el sistema PHP.
+
+NO borres todavía:
+
+- El proyecto PHP.
+- La base de datos MySQL original.
+- Los archivos de usuarios.
+- Los archivos adjuntos.
+
+La migración correcta será:
+
+PHP/MySQL
+      |
+      v
+SQL Server
+      |
+      v
+ASP.NET Core 10
+      |
+      v
+V4
+
+Primero comprobamos que la V4 funcione con una base de datos de prueba.
+
+Después migramos los datos reales.
+
+============================================================
+16. IMPORTANTE SOBRE VISUAL STUDIO 2026
+============================================================
+
+Estas instrucciones están hechas pensando específicamente en:
+
+Visual Studio 2026
+.NET 10
+ASP.NET Core 10
+Entity Framework Core 10
+SQL Server
+
+No necesitas utilizar Visual Studio 2022 para este proyecto.
+
+============================================================
+17. ORDEN RECOMENDADO PARA TRABAJAR
+============================================================
+
+Hazlo exactamente en este orden:
+
+1. Instalar Visual Studio 2026.
+2. Verificar ASP.NET y desarrollo web.
+3. Verificar .NET 10.
+4. Descomprimir V4.
+5. Abrir SolicitudIT_Isertec.csproj.
+6. Esperar restauración de NuGet.
+7. Configurar appsettings.json.
+8. Crear base de datos de prueba.
+9. Ejecutar Add-Migration InitialCreate.
+10. Ejecutar Update-Database.
+11. Recompilar solución.
+12. Ejecutar con HTTPS.
+13. Crear administrador.
+14. Probar usuarios.
+15. Probar solicitudes.
+16. Probar BT.
+17. Probar calendario.
+18. Probar chat.
+19. Probar archivos.
+20. Solo después migrar los datos reales.
+
+============================================================
+18. SI TE APARECE UN ERROR
+============================================================
+
+No borres carpetas ni reinstales todo.
+
+Envíame:
+
+- El mensaje completo del error.
+- Una captura de Visual Studio si es necesario.
+- El archivo donde Visual Studio marca el error.
+
+Y lo vamos corrigiendo uno por uno.
+
+============================================================
+FIN
+============================================================

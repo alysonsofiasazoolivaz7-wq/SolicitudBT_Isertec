@@ -1,0 +1,4 @@
+patron mbs
+
+C:\Users\alyson.sazo\source\repos\MyfirstVSproject\ -> Ruta donde tenemos que configurar
+el git para subir el proyecto. 

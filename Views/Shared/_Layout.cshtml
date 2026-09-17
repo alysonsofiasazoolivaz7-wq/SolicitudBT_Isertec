@@ -1,0 +1,234 @@
+@inject SolicitudIT_Isertec.Services.NotificationService Notifier
+
+@{
+var authenticated =
+User.Identity?.IsAuthenticated == true;
+
+var userId =
+    authenticated
+        ? int.Parse(
+            User.FindFirst(
+                System.Security.Claims.ClaimTypes.NameIdentifier
+            )!.Value
+        )
+        : 0;
+
+var unread =
+    authenticated
+        ? await Notifier.UnreadAsync(userId)
+        : 0;
+
+var unreadChat =
+    authenticated
+        ? await Notifier.UnreadChatAsync(userId)
+        : 0;
+
+var role =
+    User.FindFirst(
+        System.Security.Claims.ClaimTypes.Role
+    )?.Value;
+
+}
+
+<!doctype html>
+
+<html lang="es">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1">
+
+<title>
+    Soporte BT · Isertec
+</title>
+
+<link rel="stylesheet"
+      href="~/css/app.css">
+
+<script src="~/js/app.js"
+        defer></script>
+
+</head>
+
+<body>
+
+@if (authenticated)
+{ <aside class="sidebar">
+
+    <div class="brand">
+
+        <img src="~/img/logo-bt-white.png">
+
+        <span>
+            BUSINESS
+            <br>
+            TECHNOLOGY
+        </span>
+
+    </div>
+
+
+    <nav>
+
+        <a asp-controller="Home"
+           asp-action="Index">
+
+            ⌂
+
+            <span>
+                Inicio
+            </span>
+
+        </a>
+
+
+        <a asp-controller="Solicitudes"
+           asp-action="Index">
+
+            ▣
+
+            <span>
+                Solicitudes
+            </span>
+
+        </a>
+
+
+        <a asp-controller="Chat"
+           asp-action="Index"
+           class="sidebar-chat-link">
+
+            <span class="sidebar-icon">
+                ▰
+            </span>
+
+            <span>
+                Chat
+
+                @if (unreadChat > 0)
+                {
+                    <span class="chat-unread-dot"
+                          title="Tienes mensajes nuevos"></span>
+                }
+            </span>
+
+        </a>
+
+
+        <a asp-controller="Notificaciones"
+           asp-action="Index">
+
+            ♢
+
+            <span>
+
+                Notificaciones
+
+                @if (unread > 0)
+                {
+                    <b class="badge">
+                        @unread
+                    </b>
+                }
+
+            </span>
+
+        </a>
+
+
+        @if (role != "usuario")
+        {
+            <a asp-controller="Calendario"
+               asp-action="Index">
+
+                ▦
+
+                <span>
+                    Calendario
+                </span>
+
+            </a>
+        }
+
+
+        @if (role == "admin")
+        {
+            <div class="section">
+                ADMINISTRACIÓN
+            </div>
+
+            <a asp-controller="Admin"
+               asp-action="Index">
+
+                ⚙
+
+                <span>
+                    Administración
+                </span>
+
+            </a>
+        }
+
+    </nav>
+
+
+    <div class="side-bottom">
+
+        <span>
+            @User.Identity!.Name
+        </span>
+
+        <a asp-controller="Account"
+           asp-action="Logout">
+
+            Cerrar sesión
+
+        </a>
+
+    </div>
+
+</aside>
+
+}
+
+<main class="@(authenticated ? "with-side" : "")">
+
+<header class="top">
+
+    <div>
+
+        <strong>
+            Soporte BT
+        </strong>
+
+        <span class="muted">
+            · Isertec
+        </span>
+
+    </div>
+
+
+    @if (authenticated)
+    {
+        <div class="user-pill">
+            @role
+        </div>
+    }
+
+</header>
+
+
+<div class="content">
+
+    @RenderBody()
+
+</div>
+
+</main>
+
+</body>
+
+</html>
