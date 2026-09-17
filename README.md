@@ -11,8 +11,7 @@ Migración completa de la aplicación de soporte BT a **ASP.NET Core 10 + SQL Se
 - Asignación o toma de tickets.
 - Comentarios e historial.
 - Adjuntos de imágenes/documentos.
-- Chat privado estilo corporativo con adjuntos y polling preparado.
-- Notificaciones para usuarios y BT.
+- Notificaciones solamente para usuarios, destinadas a informar sobre respuestas y actualizaciones de sus solicitudes.
 - Calendario BT.
 - Administración de usuarios y equipos.
 - UI gris/azul y logo BT.

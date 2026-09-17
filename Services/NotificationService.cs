@@ -36,35 +36,12 @@ public NotificationService(AppDbContext db)
 
         await db.SaveChangesAsync();
     }
-
-    /*
-     * Notificaciones normales.
-     *
-     * Las notificaciones de chat NO cuentan aquí porque
-     * se muestran mediante el indicador del menú Chat.
-     */
     public Task<int> UnreadAsync(int userId)
     {
         return db.Notificaciones
             .CountAsync(x =>
                 x.UsuarioId == userId &&
-                !x.LeidaEn.HasValue &&
-                x.Tipo != "chat"
-            );
-    }
-
-    /*
-     * Mensajes privados pendientes de leer.
-     *
-     * El indicador de Chat se basa directamente en MensajePrivado.
-     * Esto evita depender de que exista una Notificacion de tipo chat.
-     */
-    public Task<int> UnreadChatAsync(int userId)
-    {
-        return db.MensajesPrivados
-            .CountAsync(x =>
-                x.DestinatarioId == userId &&
-                !x.LeidoEn.HasValue
+                !x.LeidaEn.HasValue
             );
     }
 
@@ -86,20 +63,12 @@ public NotificationService(AppDbContext db)
 
         await db.SaveChangesAsync();
     }
-
-    /*
-     * Marcar como leídas solamente las notificaciones normales.
-     *
-     * Las notificaciones de chat quedan fuera porque el estado
-     * real de lectura lo controla MensajePrivado.LeidoEn.
-     */
     public async Task MarkAllAsReadAsync(int userId)
     {
         await db.Notificaciones
             .Where(x =>
                 x.UsuarioId == userId &&
-                !x.LeidaEn.HasValue &&
-                x.Tipo != "chat"
+                !x.LeidaEn.HasValue
             )
             .ExecuteUpdateAsync(setters =>
                 setters.SetProperty(

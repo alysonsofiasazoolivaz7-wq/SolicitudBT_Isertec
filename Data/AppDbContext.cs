@@ -21,7 +21,6 @@ public class AppDbContext : DbContext
     public DbSet<Solicitud> Solicitudes => Set<Solicitud>();
     public DbSet<Comentario> Comentarios => Set<Comentario>();
     public DbSet<Adjunto> Adjuntos => Set<Adjunto>();
-    public DbSet<MensajePrivado> MensajesPrivados => Set<MensajePrivado>();
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
     public DbSet<HistorialSolicitud> HistorialSolicitudes => Set<HistorialSolicitud>();
 
@@ -283,54 +282,6 @@ public class AppDbContext : DbContext
                 ["CreadoEn"] = "creado_en"
             }
         );
-
-
-        // =========================================================
-        // MENSAJES PRIVADOS
-        // =========================================================
-
-        b.Entity<MensajePrivado>().ToTable("mensajes_privados");
-
-        Map(b.Entity<MensajePrivado>(), new()
-        {
-            ["Id"] = "id",
-            ["SolicitudId"] = "solicitud_id",
-            ["RemitenteId"] = "remitente_id",
-            ["DestinatarioId"] = "destinatario_id",
-            ["AdjuntoId"] = "adjunto_id",
-            ["Mensaje"] = "mensaje",
-            ["LeidoEn"] = "leido_en",
-            ["CreadoEn"] = "creado_en"
-        });
-
-        // Relación con la solicitud
-        b.Entity<MensajePrivado>()
-            .HasOne(x => x.Solicitud)
-            .WithMany()
-            .HasForeignKey(x => x.SolicitudId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        // Remitente
-        b.Entity<MensajePrivado>()
-            .HasOne(x => x.Remitente)
-            .WithMany()
-            .HasForeignKey(x => x.RemitenteId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        // Destinatario
-        b.Entity<MensajePrivado>()
-            .HasOne(x => x.Destinatario)
-            .WithMany()
-            .HasForeignKey(x => x.DestinatarioId)
-            .OnDelete(DeleteBehavior.NoAction);
-
-        // Adjunto opcional
-        b.Entity<MensajePrivado>()
-            .HasOne(x => x.Adjunto)
-            .WithMany()
-            .HasForeignKey(x => x.AdjuntoId)
-            .OnDelete(DeleteBehavior.NoAction);
-
 
         // =========================================================
         // NOTIFICACIONES

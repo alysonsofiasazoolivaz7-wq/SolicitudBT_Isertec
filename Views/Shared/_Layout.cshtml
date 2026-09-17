@@ -13,20 +13,15 @@ var userId =
         )
         : 0;
 
-var unread =
-    authenticated
-        ? await Notifier.UnreadAsync(userId)
-        : 0;
-
-var unreadChat =
-    authenticated
-        ? await Notifier.UnreadChatAsync(userId)
-        : 0;
-
 var role =
     User.FindFirst(
         System.Security.Claims.ClaimTypes.Role
     )?.Value;
+
+var unread =
+    authenticated && role == "usuario"
+        ? await Notifier.UnreadAsync(userId)
+        : 0;
 
 }
 
@@ -48,8 +43,6 @@ var role =
 <link rel="stylesheet"
       href="~/css/app.css">
 
-<script src="~/js/app.js"
-        defer></script>
 
 </head>
 
@@ -97,46 +90,28 @@ var role =
         </a>
 
 
-        <a asp-controller="Chat"
-           asp-action="Index"
-           class="sidebar-chat-link">
+        @if (role == "usuario")
+        {
+            <a asp-controller="Notificaciones"
+               asp-action="Index">
 
-            <span class="sidebar-icon">
-                ▰
-            </span>
+                ♢
 
-            <span>
-                Chat
+                <span>
 
-                @if (unreadChat > 0)
-                {
-                    <span class="chat-unread-dot"
-                          title="Tienes mensajes nuevos"></span>
-                }
-            </span>
+                    Notificaciones
 
-        </a>
+                    @if (unread > 0)
+                    {
+                        <b class="badge">
+                            @unread
+                        </b>
+                    }
 
+                </span>
 
-        <a asp-controller="Notificaciones"
-           asp-action="Index">
-
-            ♢
-
-            <span>
-
-                Notificaciones
-
-                @if (unread > 0)
-                {
-                    <b class="badge">
-                        @unread
-                    </b>
-                }
-
-            </span>
-
-        </a>
+            </a>
+        }
 
 
         @if (role != "usuario")

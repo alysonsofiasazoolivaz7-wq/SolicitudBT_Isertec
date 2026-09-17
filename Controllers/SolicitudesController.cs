@@ -104,8 +104,6 @@ public class SolicitudesController : Controller
             .Include(x => x.Equipo)
             .Include(x => x.Tecnico)
             .Include(x => x.TecnicoSolicitado)
-            .Include(x => x.Comentarios)
-                .ThenInclude(c => c.Usuario)
             .Include(x => x.Adjuntos)
             .SingleOrDefaultAsync(
                 x => x.Id == id
@@ -138,7 +136,9 @@ public class SolicitudesController : Controller
         // antes de decidir si la acepta.
         else if (
             EsTecnico &&
-            !solicitud.TecnicoId.HasValue)
+            !solicitud.TecnicoId.HasValue &&
+            (!solicitud.TecnicoSolicitadoId.HasValue ||
+             solicitud.TecnicoSolicitadoId.Value == Uid))
         {
             // permitido
         }
@@ -213,9 +213,10 @@ public class SolicitudesController : Controller
             var tecnicoValido =
                 await db.Usuarios.AnyAsync(x =>
                     x.Id == m.TecnicoSolicitadoId.Value &&
-                    x.Activo &&
+                    x.Activo == true &&
                     (
-                        x.Rol == Rol.tecnico
+                        x.Rol == Rol.tecnico ||
+                        x.Rol == Rol.admin
                     )
                 );
 
@@ -268,7 +269,7 @@ public class SolicitudesController : Controller
             await db.Categorias
                 .SingleOrDefaultAsync(x =>
                     x.Id == m.CategoriaId &&
-                    x.Activo
+                    x.Activo == true
                 );
 
 
@@ -384,37 +385,6 @@ public class SolicitudesController : Controller
         await db.SaveChangesAsync();
 
 
-        // =====================================================
-        // NOTIFICAR A TÉCNICOS
-        // =====================================================
-        //
-        // Los administradores no reciben la solicitud para
-        // aceptarla.
-        //
-
-        var tecnicos = await db.Usuarios
-            .Where(x =>
-                x.Activo &&
-                x.Rol == Rol.tecnico &&
-                (
-                    !solicitud.TecnicoSolicitadoId.HasValue ||
-                    x.Id == solicitud.TecnicoSolicitadoId.Value
-                )
-            )
-            .Select(x => x.Id)
-            .ToListAsync();
-
-        foreach (var tecnicoId in tecnicos)
-        {
-            await notify.AddAsync(
-                tecnicoId,
-                solicitud.Id,
-                "nueva",
-                "Nueva solicitud",
-                $"{solicitud.Codigo}: {solicitud.Titulo}",
-                $"/Solicitudes/Details/{solicitud.Id}"
-            );
-        }
 
 
         return RedirectToAction(
@@ -433,7 +403,7 @@ public class SolicitudesController : Controller
     {
         model.Categorias =
             await db.Categorias
-                .Where(x => x.Activo)
+                .Where(x => x.Activo == true)
                 .OrderBy(x => x.Nombre)
                 .ToListAsync();
 
@@ -451,9 +421,10 @@ public class SolicitudesController : Controller
         model.Tecnicos =
             await db.Usuarios
                 .Where(x =>
-                    x.Activo &&
+                    x.Activo == true &&
                     (
-                        x.Rol == Rol.tecnico
+                        x.Rol == Rol.tecnico ||
+                        x.Rol == Rol.admin
                     )
                 )
                 .OrderBy(x => x.Nombre)
@@ -745,119 +716,8 @@ public class SolicitudesController : Controller
                 solicitud.UsuarioId,
                 id,
                 "cambio",
-                "Solicitud actualizada",
-                $"{solicitud.Codigo} ahora está en estado {estado}.",
-                $"/Solicitudes/Details/{id}"
-            );
-        }
-
-
-        return RedirectToAction(
-            nameof(Details),
-            new { id }
-        );
-    }
-
-
-    // =========================================================
-    // COMENTARIO
-    // =========================================================
-
-    [HttpPost]
-    [Authorize]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Comment(
-        int id,
-        string comentario)
-    {
-        var solicitud =
-            await db.Solicitudes
-                .SingleOrDefaultAsync(
-                    x => x.Id == id
-                );
-
-
-        if (solicitud == null)
-            return NotFound();
-
-
-        // =====================================================
-        // SOLO LOS DOS PARTICIPANTES
-        // =====================================================
-
-        var esSolicitante =
-            solicitud.UsuarioId == Uid;
-
-
-        var esTecnicoAsignado =
-            EsTecnico &&
-            solicitud.TecnicoId == Uid;
-
-
-        if (!esSolicitante &&
-            !esTecnicoAsignado)
-        {
-            return NotFound();
-        }
-
-
-        if (string.IsNullOrWhiteSpace(comentario))
-        {
-            return RedirectToAction(
-                nameof(Details),
-                new { id }
-            );
-        }
-
-
-        db.Comentarios.Add(
-            new Comentario
-            {
-                SolicitudId =
-                    id,
-
-                UsuarioId =
-                    Uid,
-
-                ComentarioTexto =
-                    comentario.Trim()
-            }
-        );
-
-
-        solicitud.ActualizadoEn =
-            DateTime.UtcNow;
-
-
-        await db.SaveChangesAsync();
-
-
-        // =====================================================
-        // NOTIFICAR AL OTRO PARTICIPANTE
-        // =====================================================
-
-        if (esSolicitante &&
-            solicitud.TecnicoId.HasValue)
-        {
-            await notify.AddAsync(
-                solicitud.TecnicoId.Value,
-                id,
-                "comentario",
-                "Nuevo comentario",
-                $"Hay un nuevo comentario en {solicitud.Codigo}.",
-                $"/Solicitudes/Details/{id}"
-            );
-        }
-        else if (
-            esTecnicoAsignado &&
-            solicitud.UsuarioId != Uid)
-        {
-            await notify.AddAsync(
-                solicitud.UsuarioId,
-                id,
-                "comentario",
-                "Nuevo comentario",
-                $"Hay un nuevo comentario en {solicitud.Codigo}.",
+                "Actualización del técnico",
+                $"El técnico actualizó {solicitud.Codigo}. Estado: {estado}.",
                 $"/Solicitudes/Details/{id}"
             );
         }
@@ -892,10 +752,8 @@ public class SolicitudesController : Controller
                 .Where(x =>
                     x.Id == id &&
                     x.TecnicoId == null &&
-                    (
-                        !x.TecnicoSolicitadoId.HasValue ||
-                        x.TecnicoSolicitadoId == Uid
-                    )
+                    (!x.TecnicoSolicitadoId.HasValue ||
+                     x.TecnicoSolicitadoId.Value == Uid)
                 )
                 .ExecuteUpdateAsync(setters =>
                     setters
@@ -920,18 +778,9 @@ public class SolicitudesController : Controller
 
         if (filasAfectadas == 0)
         {
-            var solicitudActual =
-                await db.Solicitudes
-                    .AsNoTracking()
-                    .SingleOrDefaultAsync(x => x.Id == id);
-
             TempData["Info"] =
-                solicitudActual?.TecnicoId != null
-                    ? "Esta solicitud ya fue aceptada por otro técnico."
-                    : solicitudActual?.TecnicoSolicitadoId.HasValue &&
-                      solicitudActual.TecnicoSolicitadoId != Uid
-                        ? "Esta solicitud fue dirigida a otro técnico de BT."
-                        : "La solicitud ya no está disponible para ser aceptada.";
+                "Esta solicitud ya fue aceptada por otro técnico.";
+
 
             return RedirectToAction(
                 nameof(Index)
@@ -954,27 +803,6 @@ public class SolicitudesController : Controller
             return NotFound();
 
 
-        // =====================================================
-        // DESACTIVAR NOTIFICACIONES DE OTROS TÉCNICOS
-        // =====================================================
-        //
-        // No las eliminamos de la base.
-        // Simplemente dejan de aparecer como pendientes.
-        //
-
-        await db.Notificaciones
-            .Where(x =>
-                x.SolicitudId == id &&
-                x.UsuarioId != Uid &&
-                x.Tipo == "nueva" &&
-                !x.LeidaEn.HasValue
-            )
-            .ExecuteUpdateAsync(setters =>
-                setters.SetProperty(
-                    x => x.LeidaEn,
-                    DateTime.UtcNow
-                )
-            );
 
 
         // =====================================================

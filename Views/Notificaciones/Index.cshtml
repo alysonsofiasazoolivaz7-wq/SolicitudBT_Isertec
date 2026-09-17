@@ -46,17 +46,6 @@
     {
         foreach (var n in Model)
         {
-            // Los mensajes de chat no se muestran aquí.
-            if (n.Tipo == "chat")
-            {
-                continue;
-            }
-
-            var esNuevaSolicitud =
-                n.Tipo == "nueva" &&
-                n.SolicitudId.HasValue &&
-                User.IsInRole("tecnico");
-
             <div class="notif @(n.LeidaEn.HasValue ? "read" : "unread")">
 
                 <div class="notif-content">
@@ -82,45 +71,14 @@
                         @n.CreadoEn.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                     </small>
 
-                    @if (esNuevaSolicitud)
+                    @if (n.SolicitudId.HasValue)
                     {
                         <div class="notif-actions">
-
                             <a class="btn"
                                asp-action="ViewRequest"
                                asp-route-id="@n.Id">
-                                Visualizar solicitud
+                                Ver solicitud
                             </a>
-
-                            <form asp-action="Accept"
-                                  method="post"
-                                  style="display:inline">
-
-                                @Html.AntiForgeryToken()
-
-                                <input type="hidden"
-                                       name="id"
-                                       value="@n.Id" />
-
-                                <button type="submit"
-                                        class="btn primary">
-                                    Aceptar solicitud
-                                </button>
-
-                            </form>
-
-                        </div>
-                    }
-                    else if (n.SolicitudId.HasValue)
-                    {
-                        <div class="notif-actions">
-
-                            <a class="btn"
-                               asp-action="ViewRequest"
-                               asp-route-id="@n.Id">
-                                Visualizar solicitud
-                            </a>
-
                         </div>
                     }
 

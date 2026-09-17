@@ -15,14 +15,7 @@
     var esTecnico = User.IsInRole("tecnico");
     var esUsuario = User.IsInRole("usuario");
 
-    // La gestión y el chat privado pertenecen al técnico
-    // asignado. El administrador no participa en solicitudes
-    // ni en conversaciones privadas.
-    var puedeGestionar = esTecnico;
-
-    var puedeAbrirChat =
-        (esUsuario && Model.UsuarioId == currentUserId && Model.TecnicoId.HasValue) ||
-        (esTecnico && Model.TecnicoId == currentUserId);
+    var puedeGestionar = esAdmin || esTecnico;
 }
 
 <div class="page-head">
@@ -42,13 +35,28 @@
     </div>
 
 
-    @if (puedeAbrirChat)
+    @if (Model.Tecnico != null &&
+         ((esUsuario && Model.UsuarioId == currentUserId) ||
+          (esTecnico && Model.TecnicoId == currentUserId)))
     {
-        <a class="btn"
-           asp-controller="Chat"
-           asp-action="Index"
-           asp-route-id="@Model.Id">
-            Abrir chat
+        var esTecnicoActual = esTecnico && Model.TecnicoId == currentUserId;
+        var destinatario = esTecnicoActual
+            ? Model.Usuario.Email
+            : Model.Tecnico.Email;
+        var nombreDestinatario = esTecnicoActual
+            ? $"{Model.Usuario.Nombre} {Model.Usuario.Apellido}"
+            : $"{Model.Tecnico.Nombre} {Model.Tecnico.Apellido}";
+        var asunto = $"Solicitud {Model.Codigo} - {Model.Titulo}";
+        var cuerpo = esTecnicoActual
+            ? $"Hola {nombreDestinatario},\n\nSoy el técnico asignado a la solicitud {Model.Codigo}: {Model.Titulo}.\n\nDescripción de la solicitud:\n{Model.Descripcion}\n\nQuedo atento para dar seguimiento.\n\nSaludos."
+            : $"Hola {nombreDestinatario},\n\nQuisiera consultar sobre mi solicitud {Model.Codigo}: {Model.Titulo}.\n\nDescripción de la solicitud:\n{Model.Descripcion}\n\nSaludos.";
+        var gmailUrl = "https://mail.google.com/mail/?view=cm&fs=1" +
+                       "&to=" + Uri.EscapeDataString(destinatario) +
+                       "&su=" + Uri.EscapeDataString(asunto) +
+                       "&body=" + Uri.EscapeDataString(cuerpo);
+
+        <a class="btn primary" href="@gmailUrl" target="_blank" rel="noopener noreferrer">
+            ✉ @(esTecnicoActual ? "Contactar al usuario por Gmail" : "Hablar con el técnico por Gmail")
         </a>
     }
 
@@ -283,70 +291,7 @@
     </section>
 
 
-    <!-- ========================================================= -->
-    <!-- SEGUIMIENTO -->
-    <!-- ========================================================= -->
 
-    <section class="panel">
-
-        <h3>Seguimiento</h3>
-
-
-        @if (Model.Comentarios != null && Model.Comentarios.Any())
-        {
-            foreach (var comentario in Model.Comentarios.OrderBy(x => x.CreadoEn))
-            {
-                <div class="comment">
-
-                    <b>
-                        @comentario.Usuario?.Nombre
-                        @comentario.Usuario?.Apellido
-                    </b>
-
-                    <small>
-                        @comentario.CreadoEn
-                        .ToLocalTime()
-                        .ToString("dd/MM/yyyy HH:mm")
-                    </small>
-
-                    <p>
-                        @comentario.ComentarioTexto
-                    </p>
-
-                </div>
-            }
-        }
-        else
-        {
-            <p class="muted">
-                Todavía no hay comentarios.
-            </p>
-        }
-
-
-        <form asp-action="Comment"
-              method="post">
-
-            @Html.AntiForgeryToken()
-
-            <input type="hidden"
-                   name="id"
-                   value="@Model.Id" />
-
-            <textarea name="comentario"
-                      placeholder="Agregar comentario..."
-                      rows="4"></textarea>
-
-            <button type="submit"
-                    class="btn">
-
-                Comentar
-
-            </button>
-
-        </form>
-
-    </section>
 
 </div>
 
@@ -377,29 +322,74 @@
                 <!-- ================================================= -->
                 <!-- TÉCNICO -->
                 <!-- ================================================= -->
-                <div>
+                @if (esAdmin)
+                {
+                    <div>
 
-                    <label>
-                        Técnico asignado
-                    </label>
+                        <label>
+                            Técnico asignado
+                        </label>
 
-                    <div class="input-like">
+                        <select name="tecnicoId">
 
-                        @if (Model.Tecnico != null)
-                        {
-                            @Model.Tecnico.Nombre
-                            @Model.Tecnico.Apellido
-                        }
-                        else
-                        {
-                            <span>
-                                Sin asignar
-                            </span>
-                        }
+                            <option value="">
+                                Sin cambio
+                            </option>
+
+
+                            @foreach (var tecnico in (IEnumerable<Usuario>)ViewBag.Techs)
+                            {
+                                if (tecnico.Id == Model.TecnicoId)
+                                {
+                                    <option value="@tecnico.Id"
+                                            selected>
+
+                                        @tecnico.Nombre
+                                        @tecnico.Apellido
+
+                                    </option>
+                                }
+                                else
+                                {
+                                    <option value="@tecnico.Id">
+
+                                        @tecnico.Nombre
+                                        @tecnico.Apellido
+
+                                    </option>
+                                }
+                            }
+
+                        </select>
 
                     </div>
+                }
+                else
+                {
+                    <div>
 
-                </div>
+                        <label>
+                            Técnico asignado
+                        </label>
+
+                        <div class="input-like">
+
+                            @if (Model.Tecnico != null)
+                            {
+                                @Model.Tecnico.Nombre
+                                @Model.Tecnico.Apellido
+                            }
+                            else
+                            {
+                                <span>
+                                    Sin asignar
+                                </span>
+                            }
+
+                        </div>
+
+                    </div>
+                }
 
 
                 <!-- ================================================= -->
