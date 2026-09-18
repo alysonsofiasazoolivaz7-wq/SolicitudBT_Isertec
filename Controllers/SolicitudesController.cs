@@ -44,10 +44,18 @@ public class SolicitudesController : Controller
 
     public async Task<IActionResult> Index()
     {
+        // La bandeja muestra únicamente solicitudes del mes actual.
+        // Las solicitudes anteriores se conservan en la base de datos y
+        // siguen disponibles para reportes/historial, pero no saturan la bandeja.
+        var ahoraLocal = DateTime.Now;
+        var inicioMesUtc = new DateTime(ahoraLocal.Year, ahoraLocal.Month, 1, 0, 0, 0, DateTimeKind.Local).ToUniversalTime();
+        var siguienteMesUtc = new DateTime(ahoraLocal.Year, ahoraLocal.Month, 1, 0, 0, 0, DateTimeKind.Local).AddMonths(1).ToUniversalTime();
+
         var q = db.Solicitudes
             .Include(x => x.Categoria)
             .Include(x => x.Equipo)
             .Include(x => x.Tecnico)
+            .Where(x => x.CreadoEn >= inicioMesUtc && x.CreadoEn < siguienteMesUtc)
             .AsQueryable();
 
 
@@ -70,18 +78,18 @@ public class SolicitudesController : Controller
             // 3. NO puede ver las aceptadas por otro técnico.
 
             q = q.Where(x =>
-                x.TecnicoId == null ||
-                x.TecnicoId == Uid
+                x.TecnicoId == Uid ||
+                x.TecnicoId == null
             );
+        }
+        else if (User.IsInRole("admin"))
+        {
+            // Administración puede ver todas las solicitudes.
         }
         else
         {
-            // Admin no participa en las solicitudes.
-            //
-            // No puede ver solicitudes desde este módulo.
             return Forbid();
         }
-
 
         var solicitudes = await q
             .OrderByDescending(x => x.CreadoEn)
@@ -136,19 +144,34 @@ public class SolicitudesController : Controller
         // antes de decidir si la acepta.
         else if (
             EsTecnico &&
-            !solicitud.TecnicoId.HasValue &&
-            (!solicitud.TecnicoSolicitadoId.HasValue ||
-             solicitud.TecnicoSolicitadoId.Value == Uid))
+            !solicitud.TecnicoId.HasValue)
         {
-            // permitido
+            // Cualquier técnico BT puede revisar una solicitud pendiente
+            // y decidir si la acepta. El usuario no elige técnico.
         }
 
-        // Cualquier otra persona no puede verla.
+        // Administración puede consultar cualquier solicitud.
+        else if (User.IsInRole("admin"))
+        {
+            ViewBag.Techs = await db.Usuarios
+                .Where(x => x.Activo && x.Rol == Rol.tecnico)
+                .OrderBy(x => x.Nombre)
+                .ThenBy(x => x.Apellido)
+                .ToListAsync();
+        }
         else
         {
             return NotFound();
         }
 
+        if (User.IsInRole("admin") && ViewBag.Techs == null)
+        {
+            ViewBag.Techs = await db.Usuarios
+                .Where(x => x.Activo && x.Rol == Rol.tecnico)
+                .OrderBy(x => x.Nombre)
+                .ThenBy(x => x.Apellido)
+                .ToListAsync();
+        }
 
         return View(solicitud);
     }
@@ -205,33 +228,6 @@ public class SolicitudesController : Controller
 
 
         // =====================================================
-        // TÉCNICO SOLICITADO
-        // =====================================================
-
-        if (m.TecnicoSolicitadoId.HasValue)
-        {
-            var tecnicoValido =
-                await db.Usuarios.AnyAsync(x =>
-                    x.Id == m.TecnicoSolicitadoId.Value &&
-                    x.Activo == true &&
-                    (
-                        x.Rol == Rol.tecnico ||
-                        x.Rol == Rol.admin
-                    )
-                );
-
-
-            if (!tecnicoValido)
-            {
-                ModelState.AddModelError(
-                    nameof(m.TecnicoSolicitadoId),
-                    "Técnico no válido."
-                );
-            }
-        }
-
-
-        // =====================================================
         // MODALIDAD
         // =====================================================
 
@@ -254,6 +250,11 @@ public class SolicitudesController : Controller
             m.HoraVisitaSolicitada = null;
         }
 
+
+        if (string.IsNullOrWhiteSpace(m.AnyDeskId))
+        {
+            ModelState.AddModelError(nameof(m.AnyDeskId), "El ID o alias de AnyDesk es obligatorio.");
+        }
 
         if (!ModelState.IsValid)
         {
@@ -301,8 +302,7 @@ public class SolicitudesController : Controller
             EquipoId =
                 m.EquipoId,
 
-            TecnicoSolicitadoId =
-                m.TecnicoSolicitadoId,
+            TecnicoSolicitadoId = null,
 
             Titulo =
                 m.Titulo.Trim(),
@@ -315,6 +315,9 @@ public class SolicitudesController : Controller
 
             PuedeContinuarTrabajando =
                 m.PuedeContinuar,
+
+            AnyDeskId =
+                m.AnyDeskId.Trim(),
 
             ModalidadAtencion =
                 m.Modalidad,
@@ -349,6 +352,9 @@ public class SolicitudesController : Controller
 
         await db.SaveChangesAsync();
 
+        // El aviso de nuevas solicitudes para BT y administración
+        // se muestra directamente en el menú "Solicitudes".
+        // No se crea una notificación aparte para estos roles.
 
         // =====================================================
         // ARCHIVOS
@@ -418,17 +424,6 @@ public class SolicitudesController : Controller
                 .ToListAsync();
 
 
-        model.Tecnicos =
-            await db.Usuarios
-                .Where(x =>
-                    x.Activo == true &&
-                    (
-                        x.Rol == Rol.tecnico ||
-                        x.Rol == Rol.admin
-                    )
-                )
-                .OrderBy(x => x.Nombre)
-                .ToListAsync();
 
 
         return model;
@@ -573,7 +568,7 @@ public class SolicitudesController : Controller
     // =========================================================
 
     [HttpPost]
-    [Authorize(Roles = "tecnico")]
+    [Authorize(Roles = "tecnico,admin")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Update(
         int id,
@@ -582,7 +577,7 @@ public class SolicitudesController : Controller
         TimeSpan? inicio,
         TimeSpan? fin,
         string? solucion,
-        string? comentario)
+        int? tecnicoId)
     {
         var solicitud =
             await db.Solicitudes
@@ -597,82 +592,63 @@ public class SolicitudesController : Controller
 
 
         // =====================================================
-        // SOLO EL TÉCNICO ASIGNADO
+        // PERMISOS DE ACTUALIZACIÓN
         // =====================================================
 
-        if (solicitud.TecnicoId != Uid)
+        var esAdmin = User.IsInRole("admin");
+
+        if (!esAdmin && solicitud.TecnicoId != Uid)
         {
             return NotFound();
         }
 
+        var estadoAnterior = solicitud.Estado.ToString();
+        var fueAsignadaPorAdmin = false;
 
-        var estadoAnterior =
-            solicitud.Estado.ToString();
-
-
-        solicitud.Estado =
-            estado;
-
-
-        solicitud.FechaProgramada =
-            fecha;
-
-
-        solicitud.HoraInicioProgramada =
-            inicio;
-
-
-        solicitud.HoraFinProgramada =
-            fin;
-
-
-        solicitud.Solucion =
-            solucion;
-
-
-        solicitud.ActualizadoEn =
-            DateTime.UtcNow;
-
-
-        if (
-            estado ==
-            EstadoSolicitud.resuelta)
+        if (esAdmin && tecnicoId.HasValue)
         {
-            solicitud.ResueltoEn =
-                DateTime.UtcNow;
+            if (solicitud.TecnicoId.HasValue)
+            {
+                TempData["Error"] = "La solicitud ya tiene un técnico asignado.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            var tecnicoValido = await db.Usuarios.AnyAsync(x =>
+                x.Id == tecnicoId.Value &&
+                x.Activo &&
+                x.Rol == Rol.tecnico);
+
+            if (!tecnicoValido)
+            {
+                TempData["Error"] = "El técnico seleccionado no es válido.";
+                return RedirectToAction(nameof(Details), new { id });
+            }
+
+            solicitud.TecnicoId = tecnicoId.Value;
+            fueAsignadaPorAdmin = true;
         }
 
+        solicitud.Estado = fueAsignadaPorAdmin
+            ? EstadoSolicitud.asignada
+            : estado;
 
-        if (
-            estado ==
-            EstadoSolicitud.cerrada)
-        {
-            solicitud.CerradoEn =
-                DateTime.UtcNow;
-        }
+        solicitud.FechaProgramada = fecha;
+        solicitud.HoraInicioProgramada = inicio;
+        solicitud.HoraFinProgramada = fin;
 
+        var puedeGuardarReporte = solicitud.Estado is EstadoSolicitud.en_proceso or EstadoSolicitud.resuelta or EstadoSolicitud.cerrada;
+        if (puedeGuardarReporte && !string.IsNullOrWhiteSpace(solucion))
+            solicitud.Solucion = solucion.Trim();
+        else if (!puedeGuardarReporte)
+            solicitud.Solucion = null;
 
-        // =====================================================
-        // COMENTARIO
-        // =====================================================
+        solicitud.ActualizadoEn = DateTime.UtcNow;
 
-        if (!string.IsNullOrWhiteSpace(comentario))
-        {
-            db.Comentarios.Add(
-                new Comentario
-                {
-                    SolicitudId =
-                        id,
+        if (solicitud.Estado == EstadoSolicitud.resuelta)
+            solicitud.ResueltoEn = DateTime.UtcNow;
 
-                    UsuarioId =
-                        Uid,
-
-                    ComentarioTexto =
-                        comentario.Trim()
-                }
-            );
-        }
-
+        if (solicitud.Estado == EstadoSolicitud.cerrada)
+            solicitud.CerradoEn = DateTime.UtcNow;
 
         // =====================================================
         // HISTORIAL
@@ -691,16 +667,43 @@ public class SolicitudesController : Controller
                     estadoAnterior,
 
                 EstadoNuevo =
-                    estado.ToString(),
+                    solicitud.Estado.ToString(),
 
                 Descripcion =
-                    $"Solicitud actualizada a {estado}."
+                    fueAsignadaPorAdmin
+                        ? "Solicitud asignada por administración a personal de BT."
+                        : $"Solicitud actualizada a {solicitud.Estado}."
             }
         );
 
 
         await db.SaveChangesAsync();
 
+        if (esAdmin && tecnicoId.HasValue)
+        {
+            var tecnicoAsignado = await db.Usuarios
+                .Where(x => x.Id == tecnicoId.Value)
+                .Select(x => new { x.Nombre, x.Apellido })
+                .SingleAsync();
+
+            await notify.AddAsync(
+                tecnicoId.Value,
+                id,
+                "asignacion",
+                "Solicitud asignada",
+                $"Administración te asignó la solicitud {solicitud.Codigo}.",
+                $"/Solicitudes/Details/{id}"
+            );
+
+            await notify.AddAsync(
+                solicitud.UsuarioId,
+                id,
+                "asignacion",
+                "Solicitud asignada",
+                $"Tu solicitud {solicitud.Codigo} fue asignada a {tecnicoAsignado.Nombre} {tecnicoAsignado.Apellido}.",
+                $"/Solicitudes/Details/{id}"
+            );
+        }
 
         // =====================================================
         // NOTIFICAR AL SOLICITANTE
@@ -710,14 +713,14 @@ public class SolicitudesController : Controller
         // propio cambio.
         //
 
-        if (solicitud.UsuarioId != Uid)
+        if (solicitud.UsuarioId != Uid && !fueAsignadaPorAdmin)
         {
             await notify.AddAsync(
                 solicitud.UsuarioId,
                 id,
                 "cambio",
                 "Actualización del técnico",
-                $"El técnico actualizó {solicitud.Codigo}. Estado: {estado}.",
+                $"El técnico actualizó {solicitud.Codigo}. Estado: {solicitud.Estado}.",
                 $"/Solicitudes/Details/{id}"
             );
         }
@@ -727,6 +730,100 @@ public class SolicitudesController : Controller
             nameof(Details),
             new { id }
         );
+    }
+
+
+    // =========================================================
+    // CANCELAR SOLICITUD (USUARIO)
+    // =========================================================
+
+    [HttpPost]
+    [Authorize(Roles = "usuario")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Cancel(int id)
+    {
+        var solicitud = await db.Solicitudes.SingleOrDefaultAsync(x => x.Id == id && x.UsuarioId == Uid);
+        if (solicitud == null) return NotFound();
+
+        if (solicitud.Estado is EstadoSolicitud.resuelta or EstadoSolicitud.cerrada or EstadoSolicitud.cancelada)
+        {
+            TempData["Info"] = "Esta solicitud ya no puede cancelarse.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var estadoAnterior = solicitud.Estado.ToString();
+        solicitud.Estado = EstadoSolicitud.cancelada;
+        solicitud.ActualizadoEn = DateTime.UtcNow;
+        solicitud.CerradoEn = DateTime.UtcNow;
+
+        db.HistorialSolicitudes.Add(new HistorialSolicitud
+        {
+            SolicitudId = id,
+            UsuarioId = Uid,
+            EstadoAnterior = estadoAnterior,
+            EstadoNuevo = EstadoSolicitud.cancelada.ToString(),
+            Descripcion = "Solicitud cancelada por el usuario solicitante."
+        });
+
+        await db.SaveChangesAsync();
+
+        if (solicitud.TecnicoId.HasValue)
+        {
+            await notify.AddAsync(
+                solicitud.TecnicoId.Value, id, "cancelacion", "Solicitud cancelada",
+                $"La solicitud {solicitud.Codigo} fue cancelada por el usuario.",
+                $"/Solicitudes/Details/{id}");
+        }
+
+        TempData["Success"] = "La solicitud fue cancelada.";
+        return RedirectToAction(nameof(Details), new { id });
+    }
+
+    // =========================================================
+    // LIBERAR SOLICITUD (TÉCNICO)
+    // =========================================================
+
+    [HttpPost]
+    [Authorize(Roles = "tecnico")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Release(int id)
+    {
+        var solicitud = await db.Solicitudes.SingleOrDefaultAsync(x => x.Id == id && x.TecnicoId == Uid);
+        if (solicitud == null) return NotFound();
+
+        if (solicitud.Estado is EstadoSolicitud.resuelta or EstadoSolicitud.cerrada or EstadoSolicitud.cancelada)
+        {
+            TempData["Info"] = "Una solicitud finalizada no puede devolverse a la bandeja.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        var estadoAnterior = solicitud.Estado.ToString();
+        solicitud.TecnicoId = null;
+        solicitud.Estado = EstadoSolicitud.pendiente;
+        solicitud.FechaProgramada = null;
+        solicitud.HoraInicioProgramada = null;
+        solicitud.HoraFinProgramada = null;
+        solicitud.Solucion = null;
+        solicitud.ActualizadoEn = DateTime.UtcNow;
+
+        db.HistorialSolicitudes.Add(new HistorialSolicitud
+        {
+            SolicitudId = id,
+            UsuarioId = Uid,
+            EstadoAnterior = estadoAnterior,
+            EstadoNuevo = EstadoSolicitud.pendiente.ToString(),
+            Descripcion = "El técnico liberó la solicitud para que pueda ser reasignada."
+        });
+
+        await db.SaveChangesAsync();
+
+        await notify.AddAsync(
+            solicitud.UsuarioId, id, "reasignacion", "Solicitud devuelta a la bandeja",
+            $"La solicitud {solicitud.Codigo} fue liberada por el técnico y volverá a estar disponible para asignación.",
+            $"/Solicitudes/Details/{id}");
+
+        TempData["Success"] = "La solicitud fue liberada y puede ser reasignada a otro técnico.";
+        return RedirectToAction(nameof(Index));
     }
 
 
@@ -752,8 +849,7 @@ public class SolicitudesController : Controller
                 .Where(x =>
                     x.Id == id &&
                     x.TecnicoId == null &&
-                    (!x.TecnicoSolicitadoId.HasValue ||
-                     x.TecnicoSolicitadoId.Value == Uid)
+                    !x.TecnicoSolicitadoId.HasValue
                 )
                 .ExecuteUpdateAsync(setters =>
                     setters
@@ -794,6 +890,7 @@ public class SolicitudesController : Controller
 
         var solicitud =
             await db.Solicitudes
+                .Include(x => x.Usuario)
                 .SingleOrDefaultAsync(
                     x => x.Id == id
                 );
@@ -825,7 +922,9 @@ public class SolicitudesController : Controller
                     EstadoSolicitud.asignada.ToString(),
 
                 Descripcion =
-                    "Solicitud aceptada por técnico de BT."
+                    User.IsInRole("admin")
+                        ? "Solicitud aceptada por administración."
+                        : "Solicitud aceptada por técnico de BT."
             }
         );
 
@@ -847,7 +946,7 @@ public class SolicitudesController : Controller
                 id,
                 "asignacion",
                 "Solicitud aceptada",
-                $"{solicitud.Codigo} fue tomada por un técnico de BT.",
+                $"{solicitud.Codigo} fue aceptada por {User.Identity?.Name ?? "personal de BT"}.",
                 $"/Solicitudes/Details/{id}"
             );
         }
@@ -878,8 +977,6 @@ public class SolicitudFormVm
     public int? EquipoId { get; set; }
 
 
-    public int? TecnicoSolicitadoId { get; set; }
-
 
     [Required]
     [StringLength(180)]
@@ -896,6 +993,10 @@ public class SolicitudFormVm
 
     public bool PuedeContinuar { get; set; }
         = true;
+
+    [Required]
+    [StringLength(100)]
+    public string AnyDeskId { get; set; } = "";
 
 
     public ModalidadAtencion Modalidad { get; set; }
@@ -916,6 +1017,4 @@ public class SolicitudFormVm
         = new();
 
 
-    public List<Usuario> Tecnicos { get; set; }
-        = new();
 }

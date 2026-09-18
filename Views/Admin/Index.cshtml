@@ -1,2 +1,293 @@
 @model AdminVm
-<div class="page-head"><div><p class="eyebrow">ADMINISTRACIÓN</p><h1>Administración</h1></div></div><div class="admin-sections"><section class="panel"><h2>Usuarios</h2><form asp-action="UserSave" method="post" class="grid3"><input name="nombre" placeholder="Nombre"><input name="apellido" placeholder="Apellido"><input name="usuario" placeholder="Usuario"><input name="email" placeholder="Correo"><input name="password" type="password" placeholder="Contraseña"><select name="rol"><option>usuario</option><option>tecnico</option><option>admin</option></select><button class="btn primary">Crear usuario</button></form><table><tbody>@foreach(var u in Model.Usuarios){<tr><td>@u.Nombre @u.Apellido</td><td>@u.Email</td><td>@u.Rol</td><td>@(u.Activo?"Activo":"Inactivo")</td></tr>}</tbody></table></section><section class="panel"><h2>Equipos</h2><form asp-action="EquipmentSave" method="post" class="grid3"><input name="codigo" placeholder="Código"><input name="tipo" placeholder="Tipo"><input name="marca" placeholder="Marca"><input name="modelo" placeholder="Modelo"><input name="numeroSerie" placeholder="Número de serie"><input name="ubicacion" placeholder="Ubicación"><select name="estado"><option>activo</option><option>mantenimiento</option><option>baja</option></select><button class="btn primary">Registrar equipo</button></form><table><tbody>@foreach(var e in Model.Equipos){<tr><td>@e.Codigo</td><td>@e.Tipo</td><td>@e.Marca @e.Modelo</td><td>@e.Usuario?.Nombre @e.Usuario?.Apellido</td><td>@e.Estado</td></tr>}</tbody></table></section></div>
+
+<div class="page-head">
+    <div>
+        <p class="eyebrow">ADMINISTRACIÓN</p>
+        <h1>Administración</h1>
+    </div>
+</div>
+
+@if (TempData["Success"] != null)
+{
+    <div class="success">@TempData["Success"]</div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="error">@TempData["Error"]</div>
+}
+
+<div class="admin-sections">
+    <section class="panel" id="usuarios">
+        <h2>Usuarios</h2>
+
+        <form asp-action="UserSave" method="post" class="grid3 admin-form">
+            @Html.AntiForgeryToken()
+            <input name="nombre" placeholder="Nombre" required />
+            <input name="apellido" placeholder="Apellido" required />
+            <input name="usuario" placeholder="Usuario" required />
+            <input name="email" type="email" placeholder="Correo" required />
+            <input name="password" type="password" placeholder="Contraseña" required />
+            <select name="rol">
+                <option value="usuario">Usuario</option>
+                <option value="tecnico">Técnico BT</option>
+                <option value="admin">Administrador</option>
+            </select>
+            <button class="btn primary" type="submit">Crear usuario</button>
+        </form>
+
+        <div class="table-card admin-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Usuario</th>
+                        <th>Correo</th>
+                        <th>Rol</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var u in Model.Usuarios)
+                {
+                    <tr>
+                        <td>
+                            <strong>@u.Nombre @u.Apellido</strong>
+                            <small class="muted">@u.UsuarioLogin</small>
+                        </td>
+                        <td>@u.Email</td>
+                        <td>@u.Rol</td>
+                        <td>@(u.Activo ? "Activo" : "Inactivo")</td>
+                        <td>
+                            <details>
+                                <summary>Editar</summary>
+                                <form asp-action="UserSave" method="post" class="admin-edit-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <input name="nombre" value="@u.Nombre" placeholder="Nombre" required />
+                                    <input name="apellido" value="@u.Apellido" placeholder="Apellido" required />
+                                    <input name="usuario" value="@u.UsuarioLogin" placeholder="Usuario" required />
+                                    <input name="email" type="email" value="@u.Email" placeholder="Correo" required />
+                                    <input name="password" type="password" placeholder="Nueva contraseña (opcional)" />
+                                    <select name="rol">
+                                        <option value="usuario" selected="@(u.Rol == Rol.usuario ? "selected" : null)">Usuario</option>
+                                        <option value="tecnico" selected="@(u.Rol == Rol.tecnico ? "selected" : null)">Técnico BT</option>
+                                        <option value="admin" selected="@(u.Rol == Rol.admin ? "selected" : null)">Administrador</option>
+                                    </select>
+                                    <label class="check">
+                                        <input type="hidden" name="activo" value="false" />
+                                        <input type="checkbox" name="activo" value="true" checked="@(u.Activo ? "checked" : null)" />
+                                        Activo
+                                    </label>
+                                    <button class="btn primary" type="submit">Guardar cambios</button>
+                                </form>
+                                <form asp-action="UserDelete" method="post" class="inline admin-delete-form" onsubmit="return confirm('¿Eliminar este usuario?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@u.Id" />
+                                    <button class="btn danger" type="submit">Eliminar usuario</button>
+                                </form>
+                            </details>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="panel" id="equipos">
+        <h2>Equipos</h2>
+        <p class="muted">Los equipos se vinculan al usuario mediante su cuenta/correo. Aquí quedará el punto de carga y asociación del inventario real cuando se reciban los datos.</p>
+
+        <form asp-action="EquipmentSave" method="post" class="grid3 admin-form">
+            @Html.AntiForgeryToken()
+            <input name="codigo" placeholder="Código" required />
+            <input name="tipo" placeholder="Tipo" required />
+            <input name="marca" placeholder="Marca" />
+            <input name="modelo" placeholder="Modelo" />
+            <input name="numeroSerie" placeholder="Número de serie" />
+            <input name="ubicacion" placeholder="Ubicación" />
+            <select name="usuarioId">
+                <option value="">Sin usuario asignado</option>
+                @foreach (var u in Model.UsuariosActivos)
+                {
+                    <option value="@u.Id">@u.Nombre @u.Apellido · @u.Email</option>
+                }
+            </select>
+            <select name="estado">
+                <option value="activo">Activo</option>
+                <option value="mantenimiento">Mantenimiento</option>
+                <option value="baja">Baja</option>
+            </select>
+            <input name="observaciones" placeholder="Observaciones" />
+            <button class="btn primary" type="submit">Registrar equipo</button>
+        </form>
+
+        <div class="table-card admin-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Tipo</th>
+                        <th>Marca / modelo</th>
+                        <th>Usuario</th>
+                        <th>Estado</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var e in Model.Equipos)
+                {
+                    <tr>
+                        <td><strong>@e.Codigo</strong></td>
+                        <td>@e.Tipo</td>
+                        <td>@e.Marca @e.Modelo</td>
+                        <td>@e.Usuario?.Nombre @e.Usuario?.Apellido</td>
+                        <td>@e.Estado</td>
+                        <td>
+                            <details>
+                                <summary>Editar</summary>
+                                <form asp-action="EquipmentSave" method="post" class="admin-edit-form">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@e.Id" />
+                                    <input name="codigo" value="@e.Codigo" placeholder="Código" required />
+                                    <input name="tipo" value="@e.Tipo" placeholder="Tipo" required />
+                                    <input name="marca" value="@e.Marca" placeholder="Marca" />
+                                    <input name="modelo" value="@e.Modelo" placeholder="Modelo" />
+                                    <input name="numeroSerie" value="@e.NumeroSerie" placeholder="Número de serie" />
+                                    <input name="ubicacion" value="@e.Ubicacion" placeholder="Ubicación" />
+                                    <select name="usuarioId">
+                                        <option value="">Sin usuario asignado</option>
+                                        @foreach (var u in Model.UsuariosActivos)
+                                        {
+                                            <option value="@u.Id" selected="@(e.UsuarioId == u.Id ? "selected" : null)">@u.Nombre @u.Apellido · @u.Email</option>
+                                        }
+                                    </select>
+                                    <select name="estado">
+                                        <option value="activo" selected="@(e.Estado == EstadoEquipo.activo ? "selected" : null)">Activo</option>
+                                        <option value="mantenimiento" selected="@(e.Estado == EstadoEquipo.mantenimiento ? "selected" : null)">Mantenimiento</option>
+                                        <option value="baja" selected="@(e.Estado == EstadoEquipo.baja ? "selected" : null)">Baja</option>
+                                    </select>
+                                    <textarea name="observaciones" rows="3" placeholder="Observaciones">@e.Observaciones</textarea>
+                                    <button class="btn primary" type="submit">Guardar cambios</button>
+                                </form>
+                                <form asp-action="EquipmentDelete" method="post" class="inline admin-delete-form" onsubmit="return confirm('¿Eliminar este equipo?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@e.Id" />
+                                    <button class="btn danger" type="submit">Eliminar equipo</button>
+                                </form>
+                            </details>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+<section class="panel admin-module-grid" id="reportes">
+    <div>
+        <p class="eyebrow">DASHBOARD · REPORTES</p>
+        <h2>Resumen de solicitudes</h2>
+        <p class="muted">Indicadores basados en el historial completo de solicitudes. La bandeja mensual no elimina estos registros.</p>
+
+        <div class="dashboard-stats">
+            <div><span>Total histórico</span><strong>@Model.TotalSolicitudes</strong></div>
+            <div><span>Activas</span><strong>@Model.SolicitudesActivas</strong></div>
+            <div><span>Resueltas / cerradas</span><strong>@Model.SolicitudesResueltas</strong></div>
+            <div><span>Canceladas</span><strong>@Model.SolicitudesCanceladas</strong></div>
+            <div><span>Creadas este mes</span><strong>@Model.SolicitudesEsteMes</strong></div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="chart-card">
+                <div class="panel-heading-row"><div><p class="eyebrow">PRODUCTIVIDAD</p><h3>Solicitudes por técnico</h3></div></div>
+                @if (Model.SolicitudesPorTecnico.Any())
+                {
+                    var maxTecnico = Model.SolicitudesPorTecnico.Max(x => x.Total);
+                    foreach (var item in Model.SolicitudesPorTecnico)
+                    {
+                        var width = maxTecnico == 0 ? 0 : (int)Math.Round(item.Total * 100.0 / maxTecnico);
+                        <div class="bar-row"><div class="bar-label"><span>@item.Nombre</span><strong>@item.Total</strong></div><div class="bar-track"><div class="bar-fill" style="width:@width%"></div></div></div>
+                    }
+                }
+                else { <p class="muted">Todavía no hay solicitudes asignadas a técnicos.</p> }
+            </div>
+
+            <div class="chart-card">
+                <div class="panel-heading-row"><div><p class="eyebrow">ESTADOS</p><h3>Distribución por estado</h3></div></div>
+                @foreach (var item in Model.SolicitudesPorEstado)
+                {
+                    var width = Model.TotalSolicitudes == 0 ? 0 : (int)Math.Round(item.Total * 100.0 / Model.TotalSolicitudes);
+                    <div class="bar-row"><div class="bar-label"><span>@item.Estado</span><strong>@item.Total</strong></div><div class="bar-track"><div class="bar-fill" style="width:@width%"></div></div></div>
+                }
+            </div>
+
+            <div class="chart-card">
+                <div class="panel-heading-row"><div><p class="eyebrow">CATEGORÍAS</p><h3>Solicitudes por categoría</h3></div></div>
+                @foreach (var item in Model.SolicitudesPorCategoria)
+                {
+                    var maxCategoria = Model.SolicitudesPorCategoria.Any() ? Model.SolicitudesPorCategoria.Max(x => x.Total) : 0;
+                    var width = maxCategoria == 0 ? 0 : (int)Math.Round(item.Total * 100.0 / maxCategoria);
+                    <div class="bar-row"><div class="bar-label"><span>@item.Categoria</span><strong>@item.Total</strong></div><div class="bar-track"><div class="bar-fill" style="width:@width%"></div></div></div>
+                }
+            </div>
+        </div>
+
+        <div class="report-actions"><a class="btn primary" asp-action="ExportRequestsCsv">Exportar CSV</a><a class="btn" asp-action="ExportRequestsPdf">Exportar PDF</a></div>
+        <span class="field-help">Los archivos exportados incluyen el historial de solicitudes con solicitante, equipo, AnyDesk, prioridad, estado, responsable y fechas.</span>
+    </div>
+</section>
+
+<section class="panel" id="mantenimiento">
+    <div class="page-head compact-head">
+        <div><p class="eyebrow">INVENTARIO DE MANTENIMIENTO</p><h2>Stock preventivo y correctivo</h2></div>
+    </div>
+    <form asp-action="MaintenanceSave" method="post" class="grid3 admin-form">
+        @Html.AntiForgeryToken()
+        <input name="codigo" placeholder="Código" required />
+        <input name="nombre" placeholder="Artículo / repuesto" required />
+        <input name="tipo" placeholder="Tipo: preventivo / correctivo" />
+        <input name="stockActual" type="number" min="0" placeholder="Stock actual" required />
+        <input name="stockMinimo" type="number" min="0" placeholder="Stock mínimo" required />
+        <input name="ubicacion" placeholder="Ubicación" />
+        <input name="descripcion" placeholder="Descripción" />
+        <button class="btn primary" type="submit">Registrar artículo</button>
+    </form>
+    <div class="table-card admin-table">
+        <table>
+            <thead><tr><th>Código</th><th>Artículo</th><th>Tipo</th><th>Stock</th><th>Ubicación</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.InventarioMantenimiento)
+            {
+                <tr>
+                    <td><strong>@item.Codigo</strong></td>
+                    <td>@item.Nombre<small class="muted">@item.Descripcion</small></td>
+                    <td>@item.Tipo</td>
+                    <td><span class="stock-pill @(item.StockActual <= item.StockMinimo ? "stock-low" : "")">@item.StockActual / mín. @item.StockMinimo</span></td>
+                    <td>@item.Ubicacion</td>
+                    <td>@(item.Activo ? "Activo" : "Inactivo")</td>
+                    <td><details><summary>Editar</summary>
+                        <form asp-action="MaintenanceSave" method="post" class="admin-edit-form">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <input name="codigo" value="@item.Codigo" required />
+                            <input name="nombre" value="@item.Nombre" required />
+                            <input name="tipo" value="@item.Tipo" />
+                            <input name="stockActual" type="number" min="0" value="@item.StockActual" required />
+                            <input name="stockMinimo" type="number" min="0" value="@item.StockMinimo" required />
+                            <input name="ubicacion" value="@item.Ubicacion" />
+                            <textarea name="descripcion" rows="2">@item.Descripcion</textarea>
+                            <label class="check"><input type="hidden" name="activo" value="false" /><input type="checkbox" name="activo" value="true" checked="@(item.Activo ? "checked" : null)" /> Activo</label>
+                            <button class="btn primary" type="submit">Guardar</button>
+                        </form>
+                        <form asp-action="MaintenanceDelete" method="post" class="inline admin-delete-form">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="btn danger" type="submit">Eliminar</button></form>
+                    </details></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+</div>

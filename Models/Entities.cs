@@ -4,7 +4,7 @@ namespace SolicitudIT_Isertec.Models;
 
 public enum Rol { usuario, tecnico, admin }
 public enum Prioridad { baja, media, alta, critica }
-public enum EstadoSolicitud { pendiente, asignada, en_proceso, esperando_usuario, resuelta, cerrada }
+public enum EstadoSolicitud { pendiente, asignada, en_proceso, esperando_usuario, resuelta, cerrada, cancelada }
 public enum ModalidadAtencion { presencial, remoto }
 public enum EstadoEquipo { activo, mantenimiento, baja }
 
@@ -21,7 +21,7 @@ public class Equipo { [Key] public int Id {get;set;} [Required,MaxLength(50)] pu
 public class Solicitud {
  [Key] public int Id {get;set;} [Required,MaxLength(20)] public string Codigo {get;set;}=""; public int UsuarioId {get;set;} public Usuario Usuario {get;set;}=null!; public int CategoriaId {get;set;} public Categoria Categoria {get;set;}=null!; public int? EquipoId {get;set;} public Equipo? Equipo {get;set;}
  public int? TecnicoId {get;set;} public Usuario? Tecnico {get;set;} public int? TecnicoSolicitadoId {get;set;} public Usuario? TecnicoSolicitado {get;set;}
- [Required,MaxLength(180)] public string Titulo {get;set;}=""; [Required] public string Descripcion {get;set;}=""; public Prioridad Prioridad {get;set;}=Prioridad.media; public EstadoSolicitud Estado {get;set;}=EstadoSolicitud.pendiente; public bool PuedeContinuarTrabajando {get;set;}=true; public ModalidadAtencion ModalidadAtencion {get;set;}=ModalidadAtencion.remoto;
+ [Required,MaxLength(180)] public string Titulo {get;set;}=""; [Required] public string Descripcion {get;set;}=""; public Prioridad Prioridad {get;set;}=Prioridad.media; public EstadoSolicitud Estado {get;set;}=EstadoSolicitud.pendiente; public bool PuedeContinuarTrabajando {get;set;}=true; [Required,MaxLength(100)] public string AnyDeskId {get;set;}=""; public ModalidadAtencion ModalidadAtencion {get;set;}=ModalidadAtencion.remoto;
  public DateOnly? FechaVisitaSolicitada {get;set;} public TimeSpan? HoraVisitaSolicitada {get;set;} public DateOnly? FechaSolicitada {get;set;} public TimeSpan? HoraInicioSolicitada {get;set;} public TimeSpan? HoraFinSolicitada {get;set;} public DateOnly? FechaProgramada {get;set;} public TimeSpan? HoraInicioProgramada {get;set;} public TimeSpan? HoraFinProgramada {get;set;}
  public string? Solucion {get;set;} public DateTime CreadoEn {get;set;}=DateTime.UtcNow; public DateTime ActualizadoEn {get;set;}=DateTime.UtcNow; public DateTime? ResueltoEn {get;set;} public DateTime? CerradoEn {get;set;}
  public ICollection<Comentario> Comentarios {get;set;}=new List<Comentario>(); public ICollection<Adjunto> Adjuntos {get;set;}=new List<Adjunto>();
@@ -30,3 +30,18 @@ public class Comentario { [Key] public int Id {get;set;} public int SolicitudId 
 public class Adjunto { [Key] public int Id {get;set;} public int SolicitudId {get;set;} public Solicitud Solicitud {get;set;}=null!; public int UsuarioId {get;set;} public Usuario Usuario {get;set;}=null!; [Required,MaxLength(255)] public string NombreOriginal {get;set;}=""; [Required,MaxLength(255)] public string NombreArchivo {get;set;}=""; [Required,MaxLength(500)] public string Ruta {get;set;}=""; [MaxLength(100)] public string? TipoMime {get;set;} public long Tamano {get;set;} public DateTime CreadoEn {get;set;}=DateTime.UtcNow; }
 public class Notificacion { [Key] public int Id {get;set;} public int UsuarioId {get;set;} public Usuario Usuario {get;set;}=null!; public int? SolicitudId {get;set;} public Solicitud? Solicitud {get;set;} [Required,MaxLength(50)] public string Tipo {get;set;}=""; [Required,MaxLength(180)] public string Titulo {get;set;}=""; [Required,MaxLength(500)] public string Mensaje {get;set;}=""; [MaxLength(255)] public string? Enlace {get;set;} public DateTime? LeidaEn {get;set;} public DateTime CreadoEn {get;set;}=DateTime.UtcNow; }
 public class HistorialSolicitud { [Key] public int Id {get;set;} public int SolicitudId {get;set;} public Solicitud Solicitud {get;set;}=null!; public int UsuarioId {get;set;} public Usuario Usuario {get;set;}=null!; [MaxLength(30)] public string? EstadoAnterior {get;set;} [MaxLength(30)] public string? EstadoNuevo {get;set;} [Required,MaxLength(255)] public string Descripcion {get;set;}=""; public DateTime CreadoEn {get;set;}=DateTime.UtcNow; }
+
+public class InventarioMantenimiento
+{
+ [Key] public int Id {get;set;}
+ [Required,MaxLength(80)] public string Codigo {get;set;}="";
+ [Required,MaxLength(160)] public string Nombre {get;set;}="";
+ [MaxLength(500)] public string? Descripcion {get;set;}
+ [MaxLength(80)] public string? Tipo {get;set;}
+ public int StockActual {get;set;}
+ public int StockMinimo {get;set;}
+ [MaxLength(120)] public string? Ubicacion {get;set;}
+ public bool Activo {get;set;}=true;
+ public DateTime CreadoEn {get;set;}=DateTime.UtcNow;
+ public DateTime ActualizadoEn {get;set;}=DateTime.UtcNow;
+}

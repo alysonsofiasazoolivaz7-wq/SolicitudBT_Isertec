@@ -18,9 +18,19 @@ var role =
         System.Security.Claims.ClaimTypes.Role
     )?.Value;
 
+var isAdminPanel =
+    authenticated &&
+    role == "admin" &&
+    string.Equals(ViewContext.RouteData.Values["controller"]?.ToString(), "Admin", StringComparison.OrdinalIgnoreCase);
+
 var unread =
     authenticated && role == "usuario"
         ? await Notifier.UnreadAsync(userId)
+        : 0;
+
+var unreadSolicitudes =
+    authenticated && (role == "tecnico" || role == "admin")
+        ? await Notifier.UnreadSolicitudesAsync(userId)
         : 0;
 
 }
@@ -66,85 +76,76 @@ var unread =
 
     <nav>
 
-        <a asp-controller="Home"
-           asp-action="Index">
-
-            ⌂
-
-            <span>
-                Inicio
-            </span>
-
-        </a>
-
-
-        <a asp-controller="Solicitudes"
-           asp-action="Index">
-
-            ▣
-
-            <span>
-                Solicitudes
-            </span>
-
-        </a>
-
-
-        @if (role == "usuario")
+        @if (isAdminPanel)
         {
-            <a asp-controller="Notificaciones"
-               asp-action="Index">
+            <a asp-controller="Home" asp-action="Index">
+                ←
+                <span>Volver al inicio</span>
+            </a>
 
-                ♢
+            <div class="section">ADMINISTRACIÓN</div>
 
+            <a href="#usuarios">
+                👤
+                <span>Usuarios</span>
+            </a>
+
+            <a href="#equipos">
+                ▣
+                <span>Equipos</span>
+            </a>
+
+            <a href="#reportes">
+                ▤
+                <span>Reportes</span>
+            </a>
+
+            <a href="#mantenimiento">
+                ⚙
+                <span>Inventario de mantenimiento</span>
+            </a>
+        }
+        else
+        {
+            <a asp-controller="Home" asp-action="Index">
+                ⌂
+                <span>Inicio</span>
+            </a>
+
+            <a asp-controller="Solicitudes" asp-action="Index">
+                ▣
                 <span>
-
-                    Notificaciones
-
-                    @if (unread > 0)
+                    Solicitudes
+                    @if (unreadSolicitudes > 0)
                     {
-                        <b class="badge">
-                            @unread
+                        <b class="request-alert" title="Nuevas solicitudes">
+                            ♢ @unreadSolicitudes
                         </b>
                     }
-
                 </span>
-
             </a>
-        }
 
+            @if (role == "usuario")
+            {
+                <a asp-controller="Notificaciones" asp-action="Index">
+                    ♢
+                    <span>
+                        Notificaciones
+                        @if (unread > 0)
+                        {
+                            <b class="badge">@unread</b>
+                        }
+                    </span>
+                </a>
+            }
 
-        @if (role != "usuario")
-        {
-            <a asp-controller="Calendario"
-               asp-action="Index">
-
-                ▦
-
-                <span>
-                    Calendario
-                </span>
-
-            </a>
-        }
-
-
-        @if (role == "admin")
-        {
-            <div class="section">
-                ADMINISTRACIÓN
-            </div>
-
-            <a asp-controller="Admin"
-               asp-action="Index">
-
-                ⚙
-
-                <span>
-                    Administración
-                </span>
-
-            </a>
+            @if (role == "tecnico" || role == "admin")
+            {
+                <a asp-controller="Calendario" asp-action="Index">
+                    ▦
+                    <span>Calendario</span>
+                </a>
+            }
         }
 
     </nav>
@@ -188,8 +189,12 @@ var unread =
 
     @if (authenticated)
     {
-        <div class="user-pill">
-            @role
+        <div class="top-actions">
+            @if (role == "admin" && !isAdminPanel)
+            {
+                <a class="btn admin-tab" asp-controller="Admin" asp-action="Index">Administración</a>
+            }
+            <div class="user-pill">@role</div>
         </div>
     }
 

@@ -38,3 +38,10 @@ Update-Database
 ```
 
 El paquete `Microsoft.EntityFrameworkCore.Tools` ya está incluido en el proyecto.
+
+
+## Ajustes pendientes / preparados
+- Notificaciones por correo: configuración `Email` agregada en `appsettings.json`; queda pendiente conectar el proveedor/API cuando se obtengan credenciales.
+- Exportación de reportes: administración puede exportar solicitudes en CSV y PDF.
+- Inventario de dispositivos: los equipos se relacionan con `UsuarioId` (usuario/correo) y cada usuario solo puede seleccionar sus dispositivos asignados; la carga masiva queda pendiente de recibir el inventario real.
+- Asignación de solicitudes: el usuario no elige técnico; BT puede aceptar solicitudes y administración puede asignarlas.

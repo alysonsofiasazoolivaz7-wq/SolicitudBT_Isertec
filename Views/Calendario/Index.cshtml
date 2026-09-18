@@ -1,2 +1,12 @@
 @model List<Solicitud>
-<div class="page-head"><div><p class="eyebrow">PLANIFICACIÓN</p><h1>Calendario de atenciones</h1></div></div><div class="calendar-grid">@foreach(var s in Model){<a class="event" asp-controller="Solicitudes" asp-action="Details" asp-route-id="@s.Id"><b>@s.FechaProgramada?.ToString("dd/MM/yyyy")</b><strong>@s.HoraInicioProgramada?.ToString(@"hh\:mm") - @s.HoraFinProgramada?.ToString(@"hh\:mm")</strong><span>@s.Codigo · @s.Usuario?.Nombre</span></a>}</div>
+<div class="page-head">
+    <div><p class="eyebrow">PLANIFICACIÓN PERSONAL</p><h1>Calendario de atenciones</h1><p class="muted">Solo aparecen las solicitudes que fueron aceptadas por ti.</p></div>
+</div>
+@if (!Model.Any())
+{
+    <div class="panel empty"><h3>Sin atenciones programadas</h3><p>No tienes solicitudes aceptadas con fecha programada.</p></div>
+}
+else
+{
+<div class="calendar-grid">@foreach(var s in Model){<a class="event" asp-controller="Solicitudes" asp-action="Details" asp-route-id="@s.Id"><b>@s.FechaProgramada?.ToString("dd/MM/yyyy")</b><strong>@s.HoraInicioProgramada?.ToString(@"hh\:mm") - @s.HoraFinProgramada?.ToString(@"hh\:mm")</strong><span>@s.Codigo · @s.Usuario?.Nombre</span></a>}</div>
+}

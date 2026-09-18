@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<Adjunto> Adjuntos => Set<Adjunto>();
     public DbSet<Notificacion> Notificaciones => Set<Notificacion>();
     public DbSet<HistorialSolicitud> HistorialSolicitudes => Set<HistorialSolicitud>();
+    public DbSet<InventarioMantenimiento> InventarioMantenimiento => Set<InventarioMantenimiento>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -167,6 +168,7 @@ public class AppDbContext : DbContext
                 ["Prioridad"] = "prioridad",
                 ["Estado"] = "estado",
                 ["PuedeContinuarTrabajando"] = "puede_continuar_trabajando",
+                ["AnyDeskId"] = "anydesk_id",
                 ["ModalidadAtencion"] = "modalidad_atencion",
                 ["FechaVisitaSolicitada"] = "fecha_visita_solicitada",
                 ["HoraVisitaSolicitada"] = "hora_visita_solicitada",
@@ -302,6 +304,31 @@ public class AppDbContext : DbContext
                 ["Enlace"] = "enlace",
                 ["LeidaEn"] = "leida_en",
                 ["CreadoEn"] = "creado_en"
+            }
+        );
+
+
+        // =========================================================
+        // INVENTARIO DE MANTENIMIENTO
+        // =========================================================
+
+        b.Entity<InventarioMantenimiento>().ToTable("inventario_mantenimiento");
+
+        Map(
+            b.Entity<InventarioMantenimiento>(),
+            new()
+            {
+                ["Id"] = "id",
+                ["Codigo"] = "codigo",
+                ["Nombre"] = "nombre",
+                ["Descripcion"] = "descripcion",
+                ["Tipo"] = "tipo",
+                ["StockActual"] = "stock_actual",
+                ["StockMinimo"] = "stock_minimo",
+                ["Ubicacion"] = "ubicacion",
+                ["Activo"] = "activo",
+                ["CreadoEn"] = "creado_en",
+                ["ActualizadoEn"] = "actualizado_en"
             }
         );
 

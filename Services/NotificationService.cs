@@ -45,6 +45,33 @@ public NotificationService(AppDbContext db)
             );
     }
 
+    public async Task<int> UnreadSolicitudesAsync(int userId)
+    {
+        var usuario = await db.Usuarios
+            .Where(x => x.Id == userId)
+            .Select(x => new { x.Rol })
+            .SingleOrDefaultAsync();
+
+        if (usuario == null)
+            return 0;
+
+        var query = db.Solicitudes
+            .Where(x => x.TecnicoId == null);
+
+        if (usuario.Rol == Rol.tecnico)
+        {
+            query = query.Where(x =>
+                !x.TecnicoSolicitadoId.HasValue ||
+                x.TecnicoSolicitadoId == userId);
+        }
+        else if (usuario.Rol != Rol.admin)
+        {
+            return 0;
+        }
+
+        return await query.CountAsync();
+    }
+
     public async Task MarkAsReadAsync(
         int notificationId,
         int userId)

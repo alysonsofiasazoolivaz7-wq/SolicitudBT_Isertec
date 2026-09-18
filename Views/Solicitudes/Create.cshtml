@@ -5,7 +5,7 @@
         <p class="eyebrow">NUEVA ATENCIÓN</p>
         <h1>Crear solicitud</h1>
         <p class="muted">
-            Describe el problema y, si lo necesitas, solicita un técnico.
+            Describe el problema. BT revisará la solicitud y decidirá quién la atenderá.
         </p>
     </div>
 </div>
@@ -39,10 +39,10 @@
 
 
         <div>
-            <label asp-for="EquipoId">Equipo</label>
+            <label asp-for="EquipoId">Dispositivo afectado</label>
 
             <select asp-for="EquipoId">
-                <option value="">No especificar</option>
+                <option value="">No especificar dispositivo</option>
 
                 @foreach (var x in Model.Equipos)
                 {
@@ -130,7 +130,7 @@
                    value="remoto"
                    id="modalidadRemoto">
 
-            💻 Desde mi computadora
+            💻 Desde mi dispositivo
         </label>
 
     </div>
@@ -163,26 +163,15 @@
     </div>
 
 
-    <!-- TÉCNICO SOLICITADO -->
+    <div class="form-section-title">Conexión remota</div>
 
-    <label asp-for="TecnicoSolicitadoId">
-        Solicitar técnico específico (opcional)
+    <label asp-for="AnyDeskId">
+        ID / alias de AnyDesk <span class="required-mark">*</span>
     </label>
 
-    <select asp-for="TecnicoSolicitadoId">
-
-        <option value="">
-            Que BT decida
-        </option>
-
-        @foreach (var x in Model.Tecnicos)
-        {
-            <option value="@x.Id">
-                @x.Nombre @x.Apellido
-            </option>
-        }
-
-    </select>
+    <input asp-for="AnyDeskId" placeholder="Ej. 123 456 789 o alias corporativo" required />
+    <span class="field-help">Este dato es obligatorio en toda solicitud. BT lo utilizará cuando la atención sea remota.</span>
+    <span asp-validation-for="AnyDeskId" class="error"></span>
 
 
     <!-- ARCHIVOS -->

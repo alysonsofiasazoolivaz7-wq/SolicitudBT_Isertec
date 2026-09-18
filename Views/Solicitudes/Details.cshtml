@@ -3,7 +3,6 @@
 
 @{
     var currentUserId = 0;
-
     var claimUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
     if (!string.IsNullOrWhiteSpace(claimUserId))
@@ -14,15 +13,44 @@
     var esAdmin = User.IsInRole("admin");
     var esTecnico = User.IsInRole("tecnico");
     var esUsuario = User.IsInRole("usuario");
-
     var puedeGestionar = esAdmin || esTecnico;
+
+    var esPropietario = esUsuario && Model.UsuarioId == currentUserId;
+    var esTecnicoActual = esTecnico && Model.TecnicoId == currentUserId;
+
+    var puedeReportar =
+        Model.Estado is EstadoSolicitud.en_proceso
+        or EstadoSolicitud.resuelta
+        or EstadoSolicitud.cerrada;
+
+    var plantillaReporte = """
+DIAGNÓSTICO:
+[Describa el diagnóstico realizado]
+
+SOLUCIÓN APLICADA:
+[Describa las acciones realizadas para solucionar el problema]
+
+MATERIALES / RECURSOS UTILIZADOS:
+[Indique los materiales o recursos utilizados, o escriba 'Ninguno']
+
+RESULTADO:
+[Solucionado / Solucionado parcialmente / Requiere seguimiento]
+
+OBSERVACIONES:
+[Información adicional, si aplica]
+
+RECOMENDACIONES:
+[Recomendaciones para el usuario, si aplica]
+""";
+
+    var reporteActual = string.IsNullOrWhiteSpace(Model.Solucion)
+        ? plantillaReporte
+        : Model.Solucion;
 }
 
 <div class="page-head">
-
     <div>
         <p class="eyebrow">@Model.Codigo</p>
-
         <h1>@Model.Titulo</h1>
 
         <p class="muted">
@@ -34,173 +62,142 @@
         </p>
     </div>
 
-
     @if (Model.Tecnico != null &&
-         ((esUsuario && Model.UsuarioId == currentUserId) ||
-          (esTecnico && Model.TecnicoId == currentUserId)))
+        ((esUsuario && Model.UsuarioId == currentUserId) ||
+         (esTecnico && Model.TecnicoId == currentUserId)))
     {
-        var esTecnicoActual = esTecnico && Model.TecnicoId == currentUserId;
         var destinatario = esTecnicoActual
             ? Model.Usuario.Email
             : Model.Tecnico.Email;
+
         var nombreDestinatario = esTecnicoActual
             ? $"{Model.Usuario.Nombre} {Model.Usuario.Apellido}"
             : $"{Model.Tecnico.Nombre} {Model.Tecnico.Apellido}";
-        var asunto = $"Solicitud {Model.Codigo} - {Model.Titulo}";
-        var cuerpo = esTecnicoActual
-            ? $"Hola {nombreDestinatario},\n\nSoy el técnico asignado a la solicitud {Model.Codigo}: {Model.Titulo}.\n\nDescripción de la solicitud:\n{Model.Descripcion}\n\nQuedo atento para dar seguimiento.\n\nSaludos."
-            : $"Hola {nombreDestinatario},\n\nQuisiera consultar sobre mi solicitud {Model.Codigo}: {Model.Titulo}.\n\nDescripción de la solicitud:\n{Model.Descripcion}\n\nSaludos.";
-        var gmailUrl = "https://mail.google.com/mail/?view=cm&fs=1" +
-                       "&to=" + Uri.EscapeDataString(destinatario) +
-                       "&su=" + Uri.EscapeDataString(asunto) +
-                       "&body=" + Uri.EscapeDataString(cuerpo);
 
-        <a class="btn primary" href="@gmailUrl" target="_blank" rel="noopener noreferrer">
-            ✉ @(esTecnicoActual ? "Contactar al usuario por Gmail" : "Hablar con el técnico por Gmail")
+        var asunto = $"Solicitud {Model.Codigo} - {Model.Titulo}";
+
+        var cuerpo = esTecnicoActual
+            ? $"""
+Hola {nombreDestinatario},
+
+Soy el técnico asignado a la solicitud {Model.Codigo}: {Model.Titulo}.
+
+Descripción de la solicitud:
+{Model.Descripcion}
+
+Quedo atento para dar seguimiento.
+
+Saludos.
+"""
+            : $"""
+Hola {nombreDestinatario},
+
+Quisiera consultar sobre mi solicitud {Model.Codigo}: {Model.Titulo}.
+
+Descripción de la solicitud:
+{Model.Descripcion}
+
+Saludos.
+""";
+
+        var gmailUrl =
+            "https://mail.google.com/mail/?view=cm&fs=1"
+            + "&to=" + Uri.EscapeDataString(destinatario)
+            + "&su=" + Uri.EscapeDataString(asunto)
+            + "&body=" + Uri.EscapeDataString(cuerpo);
+
+        <a class="btn primary"
+           href="@gmailUrl"
+           target="_blank"
+           rel="noopener noreferrer">
+            ✉ @(esTecnicoActual
+                            ? "Contactar al usuario por Gmail"
+                            : "Hablar con el técnico por Gmail")
         </a>
     }
-
 </div>
-
 
 @if (TempData["Success"] != null)
 {
-    <div class="success">
-        @TempData["Success"]
-    </div>
+    <div class="success">@TempData["Success"]</div>
 }
 
 @if (TempData["Info"] != null)
 {
-    <div class="info">
-        @TempData["Info"]
-    </div>
+    <div class="info">@TempData["Info"]</div>
 }
 
+@if (TempData["Error"] != null)
+{
+    <div class="error">@TempData["Error"]</div>
+}
 
-<div class="detail-grid">
+<div class="detail-layout">
 
-    <!-- ========================================================= -->
-    <!-- INFORMACIÓN DE LA SOLICITUD -->
-    <!-- ========================================================= -->
+    <!-- =========================================================
+         INFORMACIÓN DE LA SOLICITUD
+         ========================================================= -->
 
-    <section class="panel">
+    <section class="panel request-panel">
 
-        <h3>Detalle de la solicitud</h3>
+        <div class="panel-heading-row">
+            <div>
+                <p class="eyebrow">SOLICITUD</p>
+                <h2>Detalle de la solicitud</h2>
+            </div>
+
+            <span class="tag priority @Model.Prioridad">
+                @Model.Prioridad
+            </span>
+        </div>
 
         <p class="pre">
             @Model.Descripcion
         </p>
 
-
         <dl>
 
             <dt>Solicitante</dt>
-
             <dd>
-                @Model.Usuario?.Nombre
-                @Model.Usuario?.Apellido
+                @Model.Usuario?.Nombre @Model.Usuario?.Apellido
             </dd>
-
 
             <dt>Equipo</dt>
-
             <dd>
-
-                @if (Model.Equipo != null)
-                {
-                    @Model.Equipo.Codigo
-                }
-                else
-                {
-                    <span>Sin equipo especificado</span>
-                }
-
+                @(Model.Equipo != null
+                    ? $"{Model.Equipo.Codigo} · {Model.Equipo.Tipo}"
+                    : "Sin equipo especificado")
             </dd>
 
+            <dt>AnyDesk</dt>
+            <dd>
+                <code class="anydesk-value">
+                    @Model.AnyDeskId
+                </code>
+            </dd>
 
             <dt>Modalidad</dt>
-
             <dd>
-
-                @if (Model.ModalidadAtencion == ModalidadAtencion.presencial)
-                {
-                    <span>Presencial</span>
-                }
-                else
-                {
-                    <span>Remoto</span>
-                }
-
+                @(Model.ModalidadAtencion == ModalidadAtencion.presencial
+                    ? "Presencial"
+                    : "Remoto · Desde mi dispositivo")
             </dd>
-
 
             @if (Model.ModalidadAtencion == ModalidadAtencion.presencial)
             {
                 <dt>Visita solicitada</dt>
-
                 <dd>
-
-                    @if (Model.FechaVisitaSolicitada.HasValue)
-                    {
-                        @Model.FechaVisitaSolicitada.Value.ToString("dd/MM/yyyy")
-                    }
-                    else
-                    {
-                        <span>Sin fecha</span>
-                    }
-
-
-                    @if (Model.HoraVisitaSolicitada.HasValue)
-                    {
-                        <span>
-                            ·
-                            @Model.HoraVisitaSolicitada.Value.ToString(@"hh\:mm")
-                        </span>
-                    }
-                    else
-                    {
-                        <span>· Sin hora</span>
-                    }
-
+                    @(Model.FechaVisitaSolicitada?.ToString("dd/MM/yyyy") ?? "Sin fecha")
+                    ·
+                    @(Model.HoraVisitaSolicitada?.ToString(@"hh\:mm") ?? "Sin hora")
                 </dd>
             }
-            else
-            {
-                <dt>Visita solicitada</dt>
-
-                <dd>
-                    No aplica: atención remota
-                </dd>
-            }
-
 
             <dt>Programación BT</dt>
-
             <dd>
-
-                @if (Model.FechaProgramada.HasValue)
-                {
-                    @Model.FechaProgramada.Value.ToString("dd/MM/yyyy")
-                }
-                else
-                {
-                    <span>Sin fecha</span>
-                }
-
-
-                @if (Model.HoraInicioProgramada.HasValue)
-                {
-                    <span>
-                        ·
-                        @Model.HoraInicioProgramada.Value.ToString(@"hh\:mm")
-                    </span>
-                }
-                else
-                {
-                    <span>· Sin hora de inicio</span>
-                }
-
+                @(Model.FechaProgramada?.ToString("dd/MM/yyyy") ?? "Sin fecha")
+                ·
+                @(Model.HoraInicioProgramada?.ToString(@"hh\:mm") ?? "Sin hora")
 
                 @if (Model.HoraFinProgramada.HasValue)
                 {
@@ -209,66 +206,47 @@
                         @Model.HoraFinProgramada.Value.ToString(@"hh\:mm")
                     </span>
                 }
-
             </dd>
 
-
-            <dt>Técnico solicitado</dt>
-
+            <dt>Responsable</dt>
             <dd>
-
-                @if (Model.TecnicoSolicitado != null)
-                {
-                    @Model.TecnicoSolicitado.Nombre
-                    @Model.TecnicoSolicitado.Apellido
-                }
-                else
-                {
-                    <span>Que BT decida</span>
-                }
-
+                @(Model.Tecnico != null
+                    ? $"{Model.Tecnico.Nombre} {Model.Tecnico.Apellido}"
+                    : "Sin aceptar ni asignar")
             </dd>
-
-
-            <dt>Técnico asignado</dt>
-
-            <dd>
-
-                @if (Model.Tecnico != null)
-                {
-                    @Model.Tecnico.Nombre
-                    @Model.Tecnico.Apellido
-                }
-                else
-                {
-                    <span>Sin asignar</span>
-                }
-
-            </dd>
-
 
             <dt>Puede continuar trabajando</dt>
-
             <dd>
-
-                @if (Model.PuedeContinuarTrabajando)
-                {
-                    <span>Sí</span>
-                }
-                else
-                {
-                    <span>No</span>
-                }
-
+                @(Model.PuedeContinuarTrabajando ? "Sí" : "No")
             </dd>
 
         </dl>
 
+        <!-- =====================================================
+             REPORTE VISIBLE PARA EL USUARIO
+             ===================================================== -->
+        @if (!string.IsNullOrWhiteSpace(Model.Solucion) && !puedeGestionar)
+        {
+            <div class="solution-report">
 
-        <!-- ===================================================== -->
-        <!-- ARCHIVOS -->
-        <!-- ===================================================== -->
-        @if (Model.Adjuntos != null && Model.Adjuntos.Any())
+                <div class="panel-heading-row">
+                    <div>
+                        <p class="eyebrow">ATENCIÓN BT</p>
+                        <h3>Reporte de solución</h3>
+                    </div>
+                </div>
+
+                <div class="pre report-content">
+                    @Model.Solucion
+                </div>
+
+            </div>
+        }
+
+        <!-- =====================================================
+             ARCHIVOS ADJUNTOS
+             ===================================================== -->
+        @if (Model.Adjuntos?.Any() == true)
         {
             <h3>Archivos adjuntos</h3>
 
@@ -279,11 +257,39 @@
                     <a asp-controller="Archivo"
                        asp-action="Download"
                        asp-route-id="@archivo.Id">
-
                         📎 @archivo.NombreOriginal
-
                     </a>
                 }
+
+            </div>
+        }
+
+        <!-- =====================================================
+             CANCELAR SOLICITUD - USUARIO
+             ===================================================== -->
+        @if (esPropietario &&
+                    Model.Estado is not EstadoSolicitud.resuelta
+                    and not EstadoSolicitud.cerrada
+                    and not EstadoSolicitud.cancelada)
+        {
+            <div class="cancel-request">
+
+                <form asp-action="Cancel"
+                      method="post"
+                      onsubmit="return confirm('¿Cancelar esta solicitud? Esta acción quedará registrada en el historial.');">
+
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden"
+                           name="id"
+                           value="@Model.Id" />
+
+                    <button type="submit"
+                            class="btn danger">
+                        Cancelar solicitud
+                    </button>
+
+                </form>
 
             </div>
         }
@@ -291,253 +297,36 @@
     </section>
 
 
+    <!-- =========================================================
+         PANEL DE GESTIÓN BT
+         ========================================================= -->
+    @if (puedeGestionar)
+    {
+        <section class="panel management-panel">
 
+            <div class="panel-heading-row">
 
-</div>
+                <div>
+                    <p class="eyebrow">GESTIÓN BT</p>
+                    <h2>Control de atención</h2>
+                </div>
 
-
-<!-- ============================================================= -->
-<!-- GESTIÓN BT -->
-<!-- ============================================================= -->
-@if (puedeGestionar)
-{
-    <section class="panel admin-form">
-
-        <h3>Gestión BT</h3>
-
-
-        <form asp-action="Update"
-              method="post">
-
-            @Html.AntiForgeryToken()
-
-            <input type="hidden"
-                   name="id"
-                   value="@Model.Id" />
-
-
-            <div class="grid3">
-
-
-                <!-- ================================================= -->
-                <!-- TÉCNICO -->
-                <!-- ================================================= -->
-                @if (esAdmin)
+                @if (Model.Tecnico != null)
                 {
-                    <div>
-
-                        <label>
-                            Técnico asignado
-                        </label>
-
-                        <select name="tecnicoId">
-
-                            <option value="">
-                                Sin cambio
-                            </option>
-
-
-                            @foreach (var tecnico in (IEnumerable<Usuario>)ViewBag.Techs)
-                            {
-                                if (tecnico.Id == Model.TecnicoId)
-                                {
-                                    <option value="@tecnico.Id"
-                                            selected>
-
-                                        @tecnico.Nombre
-                                        @tecnico.Apellido
-
-                                    </option>
-                                }
-                                else
-                                {
-                                    <option value="@tecnico.Id">
-
-                                        @tecnico.Nombre
-                                        @tecnico.Apellido
-
-                                    </option>
-                                }
-                            }
-
-                        </select>
-
-                    </div>
+                    <span class="tag status asignada">
+                        Asignada
+                    </span>
                 }
-                else
-                {
-                    <div>
-
-                        <label>
-                            Técnico asignado
-                        </label>
-
-                        <div class="input-like">
-
-                            @if (Model.Tecnico != null)
-                            {
-                                @Model.Tecnico.Nombre
-                                @Model.Tecnico.Apellido
-                            }
-                            else
-                            {
-                                <span>
-                                    Sin asignar
-                                </span>
-                            }
-
-                        </div>
-
-                    </div>
-                }
-
-
-                <!-- ================================================= -->
-                <!-- ESTADO -->
-                <!-- ================================================= -->
-
-                <div>
-
-                    <label>
-                        Estado
-                    </label>
-
-                    <select name="estado">
-
-                        @foreach (var estado in Enum.GetValues<EstadoSolicitud>())
-                        {
-                            if (estado == Model.Estado)
-                            {
-                                <option value="@estado"
-                                        selected>
-
-                                    @estado
-
-                                </option>
-                            }
-                            else
-                            {
-                                <option value="@estado">
-
-                                    @estado
-
-                                </option>
-                            }
-                        }
-
-                    </select>
-
-                </div>
-
-
-                <!-- ================================================= -->
-                <!-- FECHA -->
-                <!-- ================================================= -->
-
-                <div>
-
-                    <label>
-                        Fecha programada
-                    </label>
-
-                    <input type="date"
-                           name="fecha"
-                           value="@(
-                           Model.FechaProgramada.HasValue
-                               ? Model.FechaProgramada.Value.ToString("yyyy-MM-dd")
-                                                   : ""
-                                           )" />
-
-                </div>
-
-
-                <!-- ================================================= -->
-                <!-- INICIO -->
-                <!-- ================================================= -->
-
-                <div>
-
-                    <label>
-                        Inicio
-                    </label>
-
-                    <input type="time"
-                           name="inicio"
-                           value="@(
-                           Model.HoraInicioProgramada.HasValue
-                               ? Model.HoraInicioProgramada.Value.ToString(@"hh\:mm")
-                                                   : ""
-                                           )" />
-
-                </div>
-
-
-                <!-- ================================================= -->
-                <!-- FIN -->
-                <!-- ================================================= -->
-
-                <div>
-
-                    <label>
-                        Fin
-                    </label>
-
-                    <input type="time"
-                           name="fin"
-                           value="@(
-                           Model.HoraFinProgramada.HasValue
-                               ? Model.HoraFinProgramada.Value.ToString(@"hh\:mm")
-                                                   : ""
-                                           )" />
-
-                </div>
 
             </div>
 
 
-            <!-- ===================================================== -->
-            <!-- SOLUCIÓN -->
-            <!-- ===================================================== -->
+            <!-- =================================================
+                 FORMULARIO PRINCIPAL DE GESTIÓN
+                 ================================================= -->
 
-            <label>
-                Solución
-            </label>
-
-            <textarea name="solucion"
-                      rows="5">@Model.Solucion</textarea>
-
-
-            <!-- ===================================================== -->
-            <!-- COMENTARIO -->
-            <!-- ===================================================== -->
-
-            <label>
-                Comentario
-            </label>
-
-            <textarea name="comentario"
-                      rows="4"
-                      placeholder="Agrega información sobre el trabajo realizado..."></textarea>
-
-
-            <button type="submit"
-                    class="btn primary">
-
-                Guardar cambios
-
-            </button>
-
-        </form>
-
-
-        <!-- ===================================================== -->
-        <!-- ACEPTAR SOLICITUD -->
-        <!-- ===================================================== -->
-        @if (!Model.TecnicoId.HasValue && esTecnico)
-        {
-            <form asp-action="Take"
-                  method="post"
-                  class="inline">
+            <form asp-action="Update"
+                  method="post">
 
                 @Html.AntiForgeryToken()
 
@@ -545,33 +334,215 @@
                        name="id"
                        value="@Model.Id" />
 
+
+                <!-- =============================================
+                     ASIGNACIÓN DE TÉCNICO
+                     ============================================= -->
+                @if (esAdmin && !Model.TecnicoId.HasValue)
+                {
+                    <label for="tecnicoId">
+                        Asignar a técnico BT
+                    </label>
+
+                    <select id="tecnicoId"
+                            name="tecnicoId">
+
+                        <option value="">
+                            No asignar todavía
+                        </option>
+
+                        @foreach (var tecnico in (IEnumerable<Usuario>)ViewBag.Techs)
+                        {
+                            <option value="@tecnico.Id">
+                                @tecnico.Nombre @tecnico.Apellido
+                            </option>
+                        }
+
+                    </select>
+                }
+                else
+                {
+                    <label>
+                        Técnico responsable
+                    </label>
+
+                    <div class="input-like">
+                        @(Model.Tecnico != null
+                            ? $"{Model.Tecnico.Nombre} {Model.Tecnico.Apellido}"
+                            : "Sin asignar")
+                    </div>
+                }
+
+
+                <!-- =============================================
+                     ESTADO
+                     ============================================= -->
+
+                <label for="estado">
+                    Estado
+                </label>
+
+                <select id="estado"
+                        name="estado">
+
+                    @foreach (var estado in Enum.GetValues<EstadoSolicitud>())
+                    {
+                        <option value="@estado"
+                                selected="@(estado == Model.Estado ? "selected" : null)">
+                            @estado
+                        </option>
+                    }
+
+                </select>
+
+
+                <!-- =============================================
+                     PROGRAMACIÓN
+                     ============================================= -->
+
+                <div class="grid2">
+
+                    <div>
+
+                        <label for="fecha">
+                            Fecha programada
+                        </label>
+
+                        <input id="fecha"
+                               type="date"
+                               name="fecha"
+                               value="@(Model.FechaProgramada?.ToString("yyyy-MM-dd") ?? "")" />
+
+                    </div>
+
+                    <div>
+
+                        <label for="inicio">
+                            Inicio
+                        </label>
+
+                        <input id="inicio"
+                               type="time"
+                               name="inicio"
+                               value="@(Model.HoraInicioProgramada?.ToString(@"hh\:mm") ?? "")" />
+
+                    </div>
+
+                </div>
+
+                <label for="fin">
+                    Fin
+                </label>
+
+                <input id="fin"
+                       type="time"
+                       name="fin"
+                       value="@(Model.HoraFinProgramada?.ToString(@"hh\:mm") ?? "")" />
+
+
+                <!-- =================================================
+                     REPORTE DE ATENCIÓN DESPLEGABLE
+                     ================================================= -->
+                @if (puedeReportar)
+                {
+                    <details class="report-accordion"
+                        @(string.IsNullOrWhiteSpace(Model.Solucion) ? "open" : "")>
+
+                        <summary>
+                            📝 Reporte de atención
+                        </summary>
+
+                        <div class="report-box">
+
+                            <div class="field-help">
+                                Este reporte se habilita cuando la solicitud
+                                está en proceso o ya fue finalizada.
+                                Será visible para la persona que realizó
+                                la solicitud.
+                            </div>
+
+                            <textarea name="solucion"
+                                      rows="16"
+                                      placeholder="Complete el reporte de atención...">@reporteActual</textarea>
+
+                        </div>
+
+                    </details>
+                }
+                else
+                {
+                    <div class="field-help report-locked">
+                        El reporte de atención se habilitará cuando la solicitud
+                        pase a <strong>En proceso</strong> o se marque como
+                        finalizada.
+                    </div>
+                }
+
+
+                <!-- =================================================
+                     GUARDAR CAMBIOS
+                     ================================================= -->
+
                 <button type="submit"
-                        class="btn primary">
-
-                    Aceptar solicitud
-
+                        class="btn primary full">
+                    Guardar cambios
                 </button>
 
             </form>
-        }
 
 
-        <!-- ===================================================== -->
-        <!-- SOLICITUD YA ASIGNADA -->
-        <!-- ===================================================== -->
-        @if (Model.TecnicoId.HasValue)
-        {
-            <div class="input-like">
+            <!-- =====================================================
+                 LIBERAR SOLICITUD - TÉCNICO
+                 ===================================================== -->
+            @if (esTecnicoActual &&
+                            Model.Estado is not EstadoSolicitud.resuelta
+                            and not EstadoSolicitud.cerrada
+                            and not EstadoSolicitud.cancelada)
+            {
+                <form asp-action="Release"
+                      method="post"
+                      class="accept-form"
+                      onsubmit="return confirm('¿Liberar esta solicitud para que otro técnico pueda aceptarla?');">
 
-                Solicitud asignada a:
+                    @Html.AntiForgeryToken()
 
-                <strong>
-                    @Model.Tecnico?.Nombre
-                    @Model.Tecnico?.Apellido
-                </strong>
+                    <input type="hidden"
+                           name="id"
+                           value="@Model.Id" />
 
-            </div>
-        }
+                    <button type="submit"
+                            class="btn full">
+                        Liberar y devolver a la bandeja
+                    </button>
 
-    </section>
-}
+                </form>
+            }
+
+
+            <!-- =====================================================
+                 ACEPTAR SOLICITUD - TÉCNICO
+                 ===================================================== -->
+            @if (!Model.TecnicoId.HasValue && esTecnico)
+            {
+                <form asp-action="Take"
+                      method="post"
+                      class="accept-form">
+
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden"
+                           name="id"
+                           value="@Model.Id" />
+
+                    <button type="submit"
+                            class="btn full">
+                        Aceptar solicitud
+                    </button>
+
+                </form>
+            }
+
+        </section>
+    }
+
+</div>
